@@ -1,0 +1,22 @@
+# Build files
+*.class
+*.jar
+*.jad
+*.bak
+
+# IDE
+nbproject/private/
+nbproject/build/
+build/
+dist/
+*.swp
+*~
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local config
+.env
+config.properties
