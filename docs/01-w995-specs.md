@@ -73,6 +73,7 @@ W995 支持以下主要 JSR (Java Specification Request):
 
 ## 参考链接
 
-- [GSMArena W995 规格页](https://www.gsmarena.com/sony_ericsson_w995-2674.php)
+- [GSMArena Sony Ericsson W995 官方规格页](https://www.gsmarena.com/sony_ericsson_w995-2674.php)
 - [Sony Ericsson W995 Developer Notes (Archive.org)](https://web.archive.org/web/20090601000000/http://developer.sonyericsson.com/)
+- [Sony Ericsson W995 Java 能力测试](https://web.archive.org/web/20090701000000/http://developer.sonyericsson.com/getDocument.do?docId=950001)
 
