@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+MIDlet-Name: MJGA
+MIDlet-Version: 1.0.0
+MIDlet-Vendor: MJGA Project
+MIDlet-1: MJGA,,com.mjga.midlet.MJGAMidlet
+MicroEdition-Configuration: CLDC-1.1
+MicroEdition-Profile: MIDP-2.0

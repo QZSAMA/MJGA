@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="MJGA" default="jar" basedir=".">
+
+    <property name="src.dir" value="src"/>
+    <property name="build.dir" value="build"/>
+    <property name="dist.dir" value="dist"/>
+    <property name="lib.dir" value="lib"/>
+    <property name="res.dir" value="res"/>
+
+    <property name="main.class" value="com.mjga.midlet.MJGAMidlet"/>
+    <property name="midlet.name" value="MJGA"/>
+    <property name="midlet.vendor" value="MJGA Project"/>
+    <property name="midlet.version" value="1.0.0"/>
+
+    <path id="classpath">
+        <fileset dir="${lib.dir}" includes="*.jar"/>
+    </path>
+
+    <target name="init">
+        <mkdir dir="${build.dir}"/>
+        <mkdir dir="${dist.dir}"/>
+    </target>
+
+    <target name="compile" depends="init" description="Compile Java source files">
+        <javac srcdir="${src.dir}" destdir="${build.dir}" 
+               target="1.8" source="1.8" includeantruntime="false" encoding="UTF-8">
+            <classpath refid="classpath"/>
+        </javac>
+    </target>
+
+    <target name="resources" depends="compile" description="Copy resources">
+        <copy todir="${build.dir}">
+            <fileset dir="${res.dir}"/>
+        </copy>
+    </target>
+
+    <target name="jar" depends="resources" description="Create JAR file">
+        <jar destfile="${dist.dir}/${ant.project.name}.jar" 
+             manifest="${src.dir}/MANIFEST.MF">
+            <fileset dir="${build.dir}" includes="**/*.class"/>
+            <fileset dir="${build.dir}" includes="**/*.*"/>
+        </jar>
+    </target>
+
+    <target name="jad" depends="jar" description="Create JAD file">
+        <touch file="${dist.dir}/${ant.project.name}.jad"/>
+        <echo file="${dist.dir}/${ant.project.name}.jad" encoding="UTF-8">MIDlet-Name: ${midlet.name}
+MIDlet-Version: ${midlet.version}
+MIDlet-Vendor: ${midlet.vendor}
+MIDlet-1: ${midlet.name}, , ${main.class}
+Jar-URL: ${ant.project.name}.jar
+</echo>
+    </target>
+
+    <target name="clean" description="Clean build output">
+        <delete dir="${build.dir}"/>
+        <delete dir="${dist.dir}"/>
+    </target>
+
+    <target name="dist" depends="clean,jar,jad" description="Build full distribution"/>
+
+</project>

@@ -60,9 +60,65 @@
 | 开发工具难找 | 使用存档的 NetBeans 6.x + Java ME SDK 3.0 + 索尼爱立信设备包 |
 | JSON 解析库没有标准支持 | 使用轻量级 J2ME JSON 库如 [JSON-me](https://github.com/skylark/json-me) 或手工解析 |
 
-## 🛠️ 开发计划
+## 🛠️ 开发环境搭建
 
-1. **Phase 1**：搭建开发环境，编写基础 HTTP 请求客户端
+### 环境要求
+- **Java JDK**: 8+ (本项目使用 JDK 26 开发验证成功)
+- **Apache Ant**: 1.8+ 用于构建
+- **macOS / Linux**: 均可开发
+
+### 快速开始
+
+```bash
+# 1. 克隆项目
+git clone https://github.com/yourname/MJGA.git
+cd MJGA
+git checkout dev
+
+# 2. 构建项目
+ant clean dist
+
+# 3. 输出文件
+# dist/MJGA.jar - 应用程序包
+# dist/MJGA.jad - J2ME 应用描述符
+```
+
+### 项目结构
+```
+MJGA/
+├── src/com/mjga/
+│   ├── midlet/MJGAMidlet.java  # 主入口 MIDlet
+│   ├── ui/                     # UI 组件
+│   ├── network/                # 网络请求
+│   └── util/                   # 工具类
+├── lib/                       # J2ME 核心类库 (已包含)
+│   ├── cldcapi11.jar           # CLDC 1.1 API
+│   └── midpapi20.jar           # MIDP 2.0 API
+├── res/                        # 资源文件
+├── build/                      # 编译中间输出
+├── dist/                       # 最终 JAD/JAR 输出
+├── docs/                       # 项目文档
+└── build.xml                   # Ant 构建脚本
+```
+
+### 已知坑与解决方案
+
+| 问题 | 解决方案 |
+|------|---------|
+| Maven Central 找不到 `cldcapi11` / `midpapi20` | 正确坐标是 `org.microemu:cldcapi11:2.0.4` 和 `org.microemu:midpapi20:2.0.4`，本项目已包含 |
+| Java 26+ 不支持 `source 1.6` | 修改 `build.xml` 中 `source/target` 为 `1.8`，兼容编译 |
+| GitHub 下载超时 | 使用 Maven Central 下载，本项目已预先下载好依赖 |
+| 404 Not Found 下载失败 | 确认版本号是 `2.0.4`，groupId 是 `org.microemu` |
+
+### 编译到真机
+1. 本地构建得到 `dist/MJGA.jad` 和 `dist/MJGA.jar`
+2. 通过蓝牙/存储卡传到 W995 手机
+3. 在手机文件管理器中点击 `.jad` 文件安装
+4. 首次运行允许网络权限即可
+
+## 🚀 开发计划
+
+1. **Phase 1**：✓ 搭建开发环境，编写基础框架
 2. **Phase 2**：实现完整 MIDlet UI，支持发送文本请求显示响应
 3. **Phase 3**：服务端适配 OpenClaw API，认证和加密
 4. **Phase 4**：测试优化，发布打包好的 JAD/JAR 文件

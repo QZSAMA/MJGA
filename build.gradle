@@ -1,0 +1,21 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    j2me
+}
+
+dependencies {
+    j2me 'net.sf.microemu:cldcapi11:1.0'
+    j2me 'net.sf.microemu:midpapi20:1.0'
+}
+
+task copyDeps(type: Copy) {
+    from configurations.j2me
+    into 'lib'
+}
