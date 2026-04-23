@@ -4,7 +4,12 @@
 
 ## 🎯 项目愿景
 
-用支持 Java (J2ME) 的老式功能机（如索尼爱立信 W995）作为轻量化智能终端，通过 WiFi / 蜂窝网络将自然语言发送到家里的 OpenClaw 服务器进行 AI 处理，再把结果返回显示在手机上。
+用支持 Java (J2ME) 的老式功能机（如索尼爱立信 W995）作为轻量化智能终端，通过 WiFi / 蜂窝网络将自然语言发送到家里的 OpenAI 兼容服务器进行 AI 处理，再把结果返回显示在手机上。
+
+**支持多种模态**：
+- 💬 文本对话 - 问答、聊天、知识查询
+- 🔊 语音合成 - 文字转语音播报结果
+- 🖼️ 图片生成 - AI 生成图片后压缩下载显示在功能机上
 
 **为什么这么做？**
 - 📵 摆脱智能手机无休止的信息轰炸，回归极简体验
@@ -13,119 +18,112 @@
 - 🛠️ 可玩性极高，挖掘老手机的剩余价值
 - 🔒 隐私友好，数据传输由你自己掌控
 
-## 🏗️ 系统架构
+## 🏗️ 整体架构
 
 ```
-┌───────────────┐      HTTP/HTTPS      ┌───────────────────┐      ┌──────────┐
-│  J2ME 功能机  │ ───────────────────> │ OpenClaw 远程服务器 │ ───> │  AI 模型  │
-│  (W995)       │ <─────────────────── │                    │ <─── │          │
-└───────────────┘     JSON 响应        └───────────────────┘      └──────────┘
+┌───────────────┐      HTTP      ┌───────────────────┐      ┌──────────┐
+│  J2ME 功能机  │ ───────────> │ openclaw-proxy  │ ───> │ OpenAI  │
+│  (W995)       │              │  反向代理         │      │  API     │
+└───────────────┘              └───────────────────┘      └──────────┘
 ```
 
-- **客户端 (J2ME MIDlet)**：提供文本输入界面，发送请求到服务器，显示返回结果
-- **服务端**：OpenClaw + RESTful API，处理请求并调用 AI
-- **网络**：手机自带 WiFi 或 GPRS/3G 蜂窝网络直连
+- **J2ME 客户端**：在老式功能机上提供输入界面，发送请求，显示结果
+- **反向代理**：解决 TLS 版本兼容性问题，压缩响应适配低速网络
+- **OpenAI API**：实际的 AI 计算
 
-## 📱 目标设备：索尼爱立信 W995
+## 📦 项目结构 (Monorepo)
 
-### 关键参数
-- **发布年份**：2009 年
-- **Java 版本**：MIDP 2.0 + CLDC 1.1
-- **支持 API**：JTWI (Wireless Messaging API)、MMAPI、FileConnection API
-- **连接性**：内置 802.11b/g WiFi，支持 WPA/WPA2，蓝牙，3G HSDPA
-- **内存**：118MB 内置存储 + M2 存储卡支持最大 16GB
-- **可用堆内存**：约 1-2MB（足够运行简单聊天应用）
-- **屏幕**：240x320 26万色 TFT，足够显示多行文本
+```
+MJGA/
+├── apps/                    # 客户端应用（各种终端）
+│   └── mjga-j2me/          # J2ME MIDlet 客户端 (索尼爱立信 W995)
+├── projects/                # 服务端/配套项目
+│   ├── openclaw-proxy/      # OpenAI 反向代理 (解决 TLS 兼容 + 压缩)
+│   └── (more coming...)
+├── docs/                    # 项目文档
+├── assets/                  # 资源文件 (截图、示意图等)
+└── README.md               # 本文档
+```
 
-### 硬件优势
-- ✅ 物理键盘输入，手感一流
-- ✅ 独立 OK/Cancel 按键，导航方便
-- ✅ 内置 WiFi，无需 SIM 卡也能联网使用
-- ✅ 外放音质好，可语音播报结果
+## 📱 客户端项目
+
+### [apps/mjga-j2me](./apps/mjga-j2me/) - J2ME MIDlet 客户端
+
+**目标设备**: 索尼爱立信 W995  
+**Java 版本**: MIDP 2.0 + CLDC 1.1  
+**功能规划**:
+- ✅ 项目框架搭建完成
+- ✅ 开发环境验证通过
+- ⏳ 文本对话界面（物理键盘输入）
+- ⏳ 接收并显示 AI 文本回复
+- ⏳ 支持语音合成请求
+- ⏳ 支持图片生成结果显示
+
+详见 [apps/mjga-j2me/README.md](./apps/mjga-j2me/README.md)
+
+## ⚙️ 服务端项目
+
+### [projects/openclaw-proxy](./projects/openclaw-proxy/) - OpenAI 反向代理
+
+**作用**:
+- J2ME 只支持 TLS 1.0，现代 OpenAI API 要求 TLS 1.2+
+- 反向代理接受 J2ME 客户端的 HTTP 请求，转发给 OpenAI
+- 将响应返回给 J2ME 客户端
+
+**功能**:
+- 中转 HTTP 请求
+- 处理 API Key 认证
+- 压缩响应减小体积适配 2G/3G 网络
+
+## 🎯 整体开发路线图
+
+### Phase 1 ✓ - 基础设施
+- [x] 搭建 monorepo 项目结构
+- [x] J2ME 开发环境搭建验证
+- [x] 创建基础 MIDlet 框架
+
+### Phase 2 - J2ME 客户端核心
+- [ ] 实现文本输入 UI
+- [ ] 实现 HTTP 请求客户端
+- [ ] 简单 JSON 解析
+- [ ] 基础对话界面
+
+### Phase 3 - 多媒体支持
+- [ ] 语音合成请求与播放
+- [ ] 图片生成请求与显示压缩图片
+- [ ] 网络错误重试处理
+
+### Phase 4 - 服务端
+- [ ] 开发反向代理服务
+- [ ] 支持流式响应分段传输
+- [ ] 音频格式转换适配 J2ME MMAPI
+
+### Phase 5 - 集成测试
+- [ ] 端到端测试（W995 真机）
+- [ ] 内存占用优化 (< 1MB 堆)
+- [ ] 发布最终版本
+
+## ✨ 核心挑战与解决方案
+
+| 挑战 | 解决方案 |
+|------|---------|
+| J2ME 只支持 TLS 1.0，现代网站要求 TLS 1.2+ | 使用反向代理，J2ME 通过 HTTP 连接到反向代理，由代理转发 HTTPS 请求到 OpenAI |
+| 堆内存有限 (~1MB) | 精简客户端逻辑，只做输入输出和简单 JSON 解析，不做复杂处理 |
+| JSON 解析库没有标准支持 | 使用轻量级 J2ME JSON 库，或者手工解析关键字段 |
+| 图片显示 | AI 生成图片后由服务端缩放到 240x320 减小体积，J2ME 解码显示 |
+| 音频播放 | 服务端将 TTS 结果转成 MP3 适合 J2ME MMAPI 播放 |
 
 ## 📚 文档索引
 
 - [索尼爱立信 W995 规格详解](./docs/01-w995-specs.md)
-- [J2ME 开发环境搭建](./docs/02-j2me-setup.md)
+- [J2ME 开发环境搭建指南](./docs/02-j2me-setup.md)
 - [J2ME 网络编程指南](./docs/03-networking.md)
 - [可行性分析与挑战解决](./docs/04-feasibility-challenges.md)
-- [开发路线图](./docs/05-roadmap.md)
-
-## 🔑 核心挑战与解决方案
-
-| 挑战 | 解决方案 |
-|------|---------|
-| J2ME 只支持 TLS 1.0，现代网站要求 TLS 1.2+ | 使用反向代理，J2ME 通过 HTTP 连接到反向代理，由代理转发 HTTPS 请求到 OpenClaw 服务器 |
-| 堆内存有限 (~1MB) | 精简客户端逻辑，只做输入输出和简单 JSON 解析，不做复杂处理 |
-| 开发工具难找 | 使用存档的 NetBeans 6.x + Java ME SDK 3.0 + 索尼爱立信设备包 |
-| JSON 解析库没有标准支持 | 使用轻量级 J2ME JSON 库如 [JSON-me](https://github.com/skylark/json-me) 或手工解析 |
-
-## 🛠️ 开发环境搭建
-
-### 环境要求
-- **Java JDK**: 8+ (本项目使用 JDK 26 开发验证成功)
-- **Apache Ant**: 1.8+ 用于构建
-- **macOS / Linux**: 均可开发
-
-### 快速开始
-
-```bash
-# 1. 克隆项目
-git clone https://github.com/yourname/MJGA.git
-cd MJGA
-git checkout dev
-
-# 2. 构建项目
-ant clean dist
-
-# 3. 输出文件
-# dist/MJGA.jar - 应用程序包
-# dist/MJGA.jad - J2ME 应用描述符
-```
-
-### 项目结构
-```
-MJGA/
-├── src/com/mjga/
-│   ├── midlet/MJGAMidlet.java  # 主入口 MIDlet
-│   ├── ui/                     # UI 组件
-│   ├── network/                # 网络请求
-│   └── util/                   # 工具类
-├── lib/                       # J2ME 核心类库 (已包含)
-│   ├── cldcapi11.jar           # CLDC 1.1 API
-│   └── midpapi20.jar           # MIDP 2.0 API
-├── res/                        # 资源文件
-├── build/                      # 编译中间输出
-├── dist/                       # 最终 JAD/JAR 输出
-├── docs/                       # 项目文档
-└── build.xml                   # Ant 构建脚本
-```
-
-### 已知坑与解决方案
-
-| 问题 | 解决方案 |
-|------|---------|
-| Maven Central 找不到 `cldcapi11` / `midpapi20` | 正确坐标是 `org.microemu:cldcapi11:2.0.4` 和 `org.microemu:midpapi20:2.0.4`，本项目已包含 |
-| Java 26+ 不支持 `source 1.6` | 修改 `build.xml` 中 `source/target` 为 `1.8`，兼容编译 |
-| GitHub 下载超时 | 使用 Maven Central 下载，本项目已预先下载好依赖 |
-| 404 Not Found 下载失败 | 确认版本号是 `2.0.4`，groupId 是 `org.microemu` |
-
-### 编译到真机
-1. 本地构建得到 `dist/MJGA.jad` 和 `dist/MJGA.jar`
-2. 通过蓝牙/存储卡传到 W995 手机
-3. 在手机文件管理器中点击 `.jad` 文件安装
-4. 首次运行允许网络权限即可
-
-## 🚀 开发计划
-
-1. **Phase 1**：✓ 搭建开发环境，编写基础框架
-2. **Phase 2**：实现完整 MIDlet UI，支持发送文本请求显示响应
-3. **Phase 3**：服务端适配 OpenClaw API，认证和加密
-4. **Phase 4**：测试优化，发布打包好的 JAD/JAR 文件
+- [原始开发路线图](./docs/05-roadmap.md)
 
 ## 📝 项目状态
 
-🚧 **项目创始阶段** - 研究与文档整理中
+🚧 **正在建设中** - Phase 1 基础设施已完成，正在开发 Phase 2 核心功能
 
 ## 🤝 贡献
 
@@ -134,4 +132,3 @@ MJGA/
 ## 📄 许可证
 
 MIT License
-

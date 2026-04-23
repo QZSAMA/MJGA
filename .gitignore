@@ -1,17 +1,23 @@
 # Build files
 *.class
-*.jar
-*.jad
 *.bak
 
 # IDE
 nbproject/private/
 nbproject/build/
-build/
-dist/
+.gradle/
+gradle/
 *.swp
 *~
 *.log
+
+# Project build output
+**/build/
+**/dist/
+
+# Output JAR/JAD (don't commit binary outputs)
+*.jar
+*.jad
 
 # OS
 .DS_Store
@@ -20,3 +26,4 @@ Thumbs.db
 # Local config
 .env
 config.properties
+local.properties
