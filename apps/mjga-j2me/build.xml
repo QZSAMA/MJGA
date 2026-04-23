@@ -48,7 +48,7 @@
 MIDlet-Version: ${midlet.version}
 MIDlet-Vendor: ${midlet.vendor}
 MIDlet-1: ${midlet.name}, , ${main.class}
-Jar-URL: ${ant.project.name}.jar
+MIDlet-Jar-URL: ${ant.project.name}.jar
 </echo>
     </target>
 
