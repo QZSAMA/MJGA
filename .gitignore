@@ -16,8 +16,11 @@ gradle/
 **/dist/
 
 # Output JAR/JAD (don't commit binary outputs)
-*.jar
-*.jad
+**/dist/*.jar
+**/dist/*.jad
+
+# Keep MicroEmulator jars in emulator (they are needed for testing)
+!**/emulator/*.jar
 
 # OS
 .DS_Store

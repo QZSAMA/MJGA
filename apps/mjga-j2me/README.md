@@ -61,7 +61,23 @@ apps/mjga-j2me/
 └── README.md                  # 本文档
 ```
 
-## 🚀 安装到手机
+## 🚀 运行测试
+
+### 电脑模拟器测试 (推荐开发阶段)
+
+项目已经预装了 **MicroEmulator** J2ME 模拟器，可以直接在电脑上测试：
+
+```bash
+# 构建
+ant clean dist
+
+# 启动模拟器 (240x320 匹配 W995)
+./run-emulator.sh
+```
+
+会弹出 Swing GUI 窗口运行你的应用，开发阶段不用每次传到真机测试！
+
+### 安装到手机真机
 
 1. 构建得到 `dist/MJGA.jad` 和 `dist/MJGA.jar`
 2. 通过蓝牙/存储卡传到 W995

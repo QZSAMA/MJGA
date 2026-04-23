@@ -120,6 +120,112 @@ MJGA/
 - [J2ME 网络编程指南](./docs/03-networking.md)
 - [可行性分析与挑战解决](./docs/04-feasibility-challenges.md)
 - [原始开发路线图](./docs/05-roadmap.md)
+- [项目可行性评估报告](./docs/06-project-feasibility-report.md)
+
+## 🛠️ 开发指南
+
+### 环境要求
+
+- **Java JDK**: 8+ (项目已验证 JDK 26 可用)
+- **Apache Ant**: 1.8+ (项目已验证 1.10.17 可用)
+- **Git**: 版本控制
+
+### 快速开始
+
+```bash
+# 1. 克隆项目
+git clone https://github.com/yourname/MJGA.git
+cd MJGA
+git checkout dev
+
+# 2. 进入 J2ME 客户端目录
+cd apps/mjga-j2me
+
+# 3. 构建项目
+ant clean dist
+
+# 4. 输出文件
+# dist/MJGA.jar - 应用程序包
+# dist/MJGA.jad - J2ME 应用描述符
+```
+
+### 开发工作流
+
+1. **编写代码** - 在 `apps/mjga-j2me/src/com/mjga/` 相应包下开发
+2. **本地构建** - 运行 `ant clean dist` 检查编译错误
+3. **提交代码** - Git 提交推送到远程
+4. **真机测试** - 将 JAD/JAR 传到 W995 安装测试
+
+### 调试方法
+
+| 调试方式 | 方法 | 适用场景 |
+|----------|------|----------|
+| **日志输出** | `System.out.println()` | 开发阶段调试 |
+| **Alert 弹窗** | `Alert.show()` 显示变量值 | 真机调试 |
+| **捕获异常** | 捕获 `IOException` 输出到日志 | 网络错误调试 |
+
+> 💡 J2ME 没有远程调试，推荐在关键路径添加异常捕获，错误信息通过 Alert 显示。
+
+### 🧪 测试
+
+#### 电脑本地模拟器测试 ✨
+
+可以在电脑上使用 **MicroEmulator** 模拟器测试 J2ME 应用，不需要每次传到真机：
+
+**已经预配置好：**
+```bash
+cd apps/mjga-j2me
+ant clean dist
+./run-emulator.sh
+```
+
+这会启动 Swing GUI 模拟器，分辨率 **240x320** 完美匹配 W995 屏幕。
+
+**模拟器文件位置:** `apps/mjga-j2me/emulator/`
+
+#### 单元测试
+J2ME 环境下单元测试比较困难，推荐：
+- 核心工具类可以在 Java SE 下编写测试
+- 网络层使用接口抽象，方便 mock
+
+#### 真机测试步骤
+
+1. 构建得到 `dist/MJGA.jad` 和 `dist/MJGA.jar`
+2. 通过蓝牙/USB/存储卡传到 W995 手机
+3. 在 W995 文件管理器中点击 `.jad` 文件
+4. 确认安装，运行测试
+
+### 部署到真机
+
+| 传输方式 | 说明 |
+|----------|------|
+| **蓝牙** | 直接发送 JAD + JAR 两个文件到手机 |
+| **存储卡** | 将文件放到 SD 卡，手机文件管理器安装 |
+| **HTTP 下载** | 放到网页上，手机浏览器下载安装 |
+
+> 💡 安装后需要允许 **网络权限** 才能连接反向代理服务器。
+
+### 服务端部署 (openclaw-proxy)
+
+开发完成后部署到你的 VPS:
+
+```bash
+# 1. 进入项目目录
+cd projects/openclaw-proxy
+
+# 2. 根据选择语言构建 (Go/Node.js/Python)
+# 示例 (Go):
+go build -o openclaw-proxy
+
+# 3. 配置环境变量
+export OPENAI_API_KEY=your-key-here
+export PORT=8080
+
+# 4. 运行
+./openclaw-proxy
+```
+
+J2ME 客户端配置请求地址为 `http://your-vps-ip:port/chat`
 
 ## 📝 项目状态
 
