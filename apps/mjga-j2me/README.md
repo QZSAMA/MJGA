@@ -68,12 +68,14 @@ apps/mjga-j2me/
 项目已经预装了 **MicroEmulator** J2ME 模拟器，可以直接在电脑上测试：
 
 ```bash
-# 构建
+# 修改代码后，**必须重新构建**
 ant clean dist
 
 # 启动模拟器 (240x320 匹配 W995)
 ./run-emulator.sh
 ```
+
+> 💡 **重要提醒**: 每次修改 Java 代码后，都需要重新运行 `ant clean dist` 重新构建，模拟器才会加载新代码
 
 会弹出 Swing GUI 窗口运行你的应用，开发阶段不用每次传到真机测试！
 

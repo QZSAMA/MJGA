@@ -36,15 +36,16 @@ public class MJGAMidlet extends MIDlet implements CommandListener {
     private ChatScreen chatScreen;
     
     /**
-     * 配置 - 请修改为你的 openclaw-proxy 地址
-     * 示例: http://192.168.1.100:8080/v1/chat/completions
+     * 配置 - openclaw-proxy 地址
+     * 如果你在本机测试，使用: http://localhost:8080/v1/chat/completions
+     * 如果部署在 VPS，替换成你的 VPS IP
      */
-    private static final String API_URL = "http://your-proxy-ip:port/v1/chat/completions";
+    private static final String API_URL = "http://localhost:8080/v1/chat/completions";
     
     /**
      * 模型名称
      */
-    private static final String MODEL = "gpt-3.5-turbo";
+    private static final String MODEL = "ark-code-latest";
     
     /**
      * 构造函数
