@@ -25,7 +25,7 @@ var (
 // J2ME -> HTTP -> openclaw-proxy -> HTTPS -> LLM API
 //
 // 默认配置（字节跳动 ark）：
-//   API_URL: https://ark.cn-beijing.volces.com/api/coding/v3
+//   API_URL: https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions
 //   MODEL: ark-code-latest
 //   API_KEY: 需要设置为你的 API key
 
@@ -46,9 +46,7 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	if forceEnglish == "" {
-		forceEnglish = "true"
-	}
+
 	r := gin.Default()
 
 	// 健康检查
@@ -60,6 +58,11 @@ func main() {
 	r.POST("/v1/chat/completions", proxyHandler)
 
 	log.Printf("openclaw-proxy starting on :%s", port)
+	log.Printf("  API_URL: %s", apiUrl)
+	log.Printf("  MODEL: %s", model)
+	log.Printf("  FORCE_ENGLISH: %s", forceEnglish)
+	log.Println()
+
 	log.Fatal(r.Run(":" + port))
 }
 
@@ -72,18 +75,10 @@ func proxyHandler(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Received request: %s", string(body))
-
-	// 创建转发请求到 LLM API
-	req, err := http.NewRequest("POST", apiUrl, bytes.NewReader(body))
-	if err != nil {
-		log.Printf("Failed to create proxy request: %v", err)
-		c.JSON(http.StatusBadGateway, gin.H{"error": "failed to create request"})
-		return
-	}
+	log.Printf("\nReceived request: %s\n", string(body))
 
 	// 如果设置了 FORCE_ENGLISH，修改用户消息要求英文回复
-	if forceEnglish == "true" || forceEnglish == "y" || forceEnglish == "1" {
+	if forceEnglish == "true" || forceEnglish == "y" || forceEnglish == "1" || forceEnglish == "yes" {
 		// 读取原始 body
 		var bodyMap map[string]interface{}
 		json.Unmarshal(body, &bodyMap)
@@ -98,14 +93,21 @@ func proxyHandler(c *gin.Context) {
 				var newBody bytes.Buffer
 				json.NewEncoder(&newBody).Encode(bodyMap)
 				// 替换 body
-				req.Body = io.NopCloser(&newBody)
-				req.ContentLength = int64(newBody.Len())
+				body = newBody.Bytes()
 			}
 		}
 	}
 
+	// 创建转发请求到 LLM API
+	req, err := http.NewRequest("POST", apiUrl, bytes.NewReader(body))
+	if err != nil {
+		log.Printf("Failed to create proxy request: %v", err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "failed to create request"})
+		return
+	}
+
 	// 设置头
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 
 	// 发送请求
@@ -119,10 +121,10 @@ func proxyHandler(c *gin.Context) {
 	log.Printf("LLM API responded with status: %d", resp.StatusCode)
 	defer resp.Body.Close()
 
-	// 读取 OpenAI 响应
+	// 读取 LLM 响应
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("Failed to read OpenAI response: %v", err)
+		log.Printf("Failed to read LLM response: %v", err)
 		c.JSON(http.StatusBadGateway, gin.H{"error": "failed to read response"})
 		return
 	}
@@ -132,7 +134,7 @@ func proxyHandler(c *gin.Context) {
 	log.Printf("AI response received:\n%s\n", respStr)
 
 	// 提取并打印回复内容（方便调试）
-	// 格式: {"choices":[{"message":{"content":"..."}}]}
+	// 格式: {"choices":[{"message":{"content":"..."}}
 	contentStart := strings.Index(respStr, "\"content\":\"")
 	if contentStart != -1 {
 		contentStart += len("\"content\":\"")

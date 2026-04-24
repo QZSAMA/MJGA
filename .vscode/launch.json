@@ -1,0 +1,31 @@
+{
+  // 使用 IntelliSense 了解相关属性。 
+  // 悬停以查看现有属性的描述。
+  // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+        {
+             "name": "Python Debugger: openclaw-proxy",
+             "type": "debugpy",
+             "request": "launch",
+             "program": "${workspaceFolder}/projects/openclaw-proxy/openclaw-proxy-py/main.py",
+             "python": "${workspaceFolder}/projects/openclaw-proxy/openclaw-proxy-py/.venv/bin/python",
+             "console": "integratedTerminal",
+             "env": {
+                 "API_KEY": "80f1b58b-9fc6-40f5-bc0b-968181fdae12",
+                 "FORCE_ENGLISH": "y",
+                 "API_URL": "https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions",
+                 "MODEL": "ark-code-latest",
+                 "PORT": "8080"
+             },
+             "justMyCode": true
+         },
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        }
+    ]
+}

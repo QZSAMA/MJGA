@@ -1,7 +1,0 @@
-Dockerfile
-.dockerignore
-*.md
-*.log
-.git
-.gitignore
-README.md
