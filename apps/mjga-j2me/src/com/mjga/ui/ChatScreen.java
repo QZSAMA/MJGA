@@ -72,7 +72,7 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
         append(this.inputField);
         
         // 状态提示
-        this.statusItem = new StringItem(null, "\n就绪，请输入问题");
+        this.statusItem = new StringItem(null, "就绪，请输入问题");
         append(this.statusItem);
         
         // 回复显示
@@ -94,7 +94,7 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
         if (c == this.sendCommand) {
             if (!this.processing) {
                 this.processing = true;
-                this.statusItem.setText("\n正在请求，请稍候...");
+                this.statusItem.setText("   正在请求，请稍候...");
                 // 在新线程发送请求，避免阻塞 UI
                 new Thread(this).start();
             }
@@ -111,7 +111,7 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
         if (question == null || question.length() == 0) {
             midlet.displayError("请输入问题");
             this.processing = false;
-            this.statusItem.setText("\n就绪，请输入问题");
+            this.statusItem.setText("就绪，请输入问题");
             return;
         }
         
@@ -144,7 +144,7 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
         midlet.getDisplay().callSerially(new Runnable() {
             public void run() {
                 responseItem.setText(currentResponse);
-                statusItem.setText("\n就绪，请输入问题");
+                statusItem.setText("就绪，请输入问题");
                 processing = false;
             }
         });
