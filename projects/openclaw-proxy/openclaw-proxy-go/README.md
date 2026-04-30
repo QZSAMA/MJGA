@@ -1,64 +1,86 @@
-# openclaw-proxy - Go 版本
+# openclaw-proxy-go - Go 版本
 
-> LLM reverse proxy for J2ME client<br>
-> Single binary deployment after compilation, good for production
+> 高性能 LLM 反向代理，编译后生成单二进制文件，方便部署
 
-## 🚀 Quick Start
+## 🚀 快速开始
 
-### Requirements
-- Go 1.21+
+### 环境要求
 
-### Install & Run
+- Go 1.20+
+
+### 编译运行
 
 ```bash
-# Enter directory
+# 进入目录
 cd projects/openclaw-proxy/openclaw-proxy-go
 
-# Set environment variables
-export API_KEY=80f1b58b-9fc6-40f5-bc0b-968181fdae12
-# Defaults already set:
-# API_URL=https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions
-# MODEL=ark-code-latest
-# PORT=8080
-# FORCE_ENGLISH=y  # Enable force English reply
-
-# Build
+# 编译
 go build -o openclaw-proxy
 
-# Run
+# 设置 API KEY
+export API_KEY=your-api-key-here
+
+# 启动服务
 ./openclaw-proxy
 ```
 
-## 📋 Environment Variables
+服务启动后会在 `http://0.0.0.0:8080` 监听。
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `API_KEY` | API key (Authorization Bearer) | **Required** |
-| `API_URL` | LLM API endpoint | `https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions` |
-| `MODEL` | Model/endpoint ID | `ark-code-latest` |
-| `PORT` | Listen port | `8080` |
-| `FORCE_ENGLISH` | Force reply in English (y/true/1 to enable) | Not set = disabled |
-
-## ✨ Features
-
-- ✅ Receives J2ME chat request
-- ✅ Forwards to LLM API
-- ✅ Returns response to J2ME
-- ✅ Prints AI reply in terminal for debugging
-- ✅ Supports `FORCE_ENGLISH` to fix emulator Chinese display issue
-
-## 🐳 Docker Deployment
+### Docker 部署
 
 ```bash
+# 构建镜像
 docker build -t openclaw-proxy .
+
+# 运行容器
 docker run -d -p 8080:8080 \
-  -e API_KEY=80f1b58b-9fc6-40f5-bc0b-968181fdae12 \
+  -e API_KEY=your-api-key \
   openclaw-proxy
 ```
 
-## 📝 API
+## 🔧 环境变量
 
-Same OpenAI compatible format, J2ME client works directly.
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `API_KEY` | 字节跳动 API 密钥 | **必须设置** |
+| `API_URL` | LLM API 端点 | `https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions` |
+| `PORT` | 监听端口 | `8080` |
+
+## 📡 测试接口
+
+```bash
+# 发送测试请求
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "ark-code-latest",
+    "messages": [{"role": "user", "content": "你好"}]
+  }'
+```
+
+## 📦 技术栈
+
+- **Gin** - Go Web 框架
+- **net/http** - 标准库 HTTP 客户端
+- **encoding/json** - 标准库 JSON 处理
+
+## 📁 项目结构
+
+```
+openclaw-proxy-go/
+├── main.go            # 主程序
+├── go.mod             # Go 模块定义
+├── go.sum             # 依赖锁定
+├── Dockerfile         # Docker 部署
+└── README.md          # 本文档
+```
+
+## 💡 特性
+
+- ✅ 高性能，Go 原生并发
+- ✅ 单二进制文件，部署方便
+- ✅ 可编译到多种平台
+- ✅ Docker 部署友好
 
 ## 📄 License
 

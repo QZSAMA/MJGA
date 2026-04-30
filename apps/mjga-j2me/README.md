@@ -1,109 +1,129 @@
-# mjga-j2me - J2ME MIDlet 客户端
+# MJGA-J2ME - 功能机 AI 客户端
 
-> 索尼爱立信 W995 上的 AI 客户端应用
+> 索尼爱立信 W995 手机上的 AI 聊天应用
 
-## 📱 目标设备
+## 📱 项目简介
 
-**索尼爱立信 W995** (2009)
-- Java ME: MIDP 2.0 + CLDC 1.1
-- 屏幕: 240x320 26万色 TFT
-- 内存: ~1.5MB 可用堆
-- 网络: WiFi / 3G HSDPA
+这是 MJGA 项目的 J2ME 客户端，运行在支持 Java MIDP 2.0 的老式功能手机上（如索尼爱立信 W995）。
 
-详见 [../../docs/01-w995-specs.md](../../docs/01-w995-specs.md)
+**核心功能：**
+- ✅ 文本输入与发送
+- ✅ 接收并显示 AI 回复
+- ✅ 折叠/展开长回答（节省屏幕空间）
+- ✅ 对话历史记录
+- ✅ 使用小字体优化显示
 
-## ✨ 功能
+## 🔧 构建要求
 
-| 功能 | 状态 | 说明 |
-|------|------|------|
-| 文本对话 | ⏳ | 物理键盘输入，显示 AI 回复 |
-| 语音合成播报 | ⏳ | 请求 TTS，播放合成语音 |
-| 图片生成显示 | ⏳ | 接收压缩图片，显示在屏幕 |
-| HTTP 网络请求 | ⏳  | 连接反向代理发送请求 |
-
-## 🛠️ 开发环境搭建
-
-### 依赖
 - Java JDK 8+
-- Apache Ant 1.8+
+- Apache Ant
 
-### 快速构建
+## 🚀 快速开始
+
+### 本地构建
 
 ```bash
-# 进入项目目录
 cd apps/mjga-j2me
-
-# 清理并构建
 ant clean dist
-
-# 输出文件
-# dist/MJGA.jar - 应用程序包
-# dist/MJGA.jad - J2ME 应用描述符
 ```
 
-### 项目结构
+构建产物：
+- `dist/MJGA.jar` - 应用程序包
+- `dist/MJGA.jad` - J2ME 应用描述符
 
-```
-apps/mjga-j2me/
-├── src/com/mjga/
-│   ├── midlet/
-│   │   └── MJGAMidlet.java    # 主入口 MIDlet
-│   ├── ui/                     # UI 组件
-│   ├── network/                # 网络请求
-│   └── util/                   # 工具类
-├── lib/                       # J2ME 核心类库
-│   ├── cldcapi11.jar           # CLDC 1.1 API (org.microemu:2.0.4)
-│   └── midpapi20.jar           # MIDP 2.0 API (org.microemu:2.0.4)
-├── res/                       # 资源文件
-├── build/                     # 编译中间输出
-├── dist/                      # 最终 JAD/JAR
-├── build.xml                  # Ant 构建脚本
-└── README.md                  # 本文档
-```
-
-## 🚀 运行测试
-
-### 电脑模拟器测试 (推荐开发阶段)
-
-项目已经预装了 **MicroEmulator** J2ME 模拟器，可以直接在电脑上测试：
+### 本地模拟器运行
 
 ```bash
-# 修改代码后，**必须重新构建**
-ant clean dist
-
-# 启动模拟器 (240x320 匹配 W995)
+# 启动 MicroEmulator 模拟器
 ./run-emulator.sh
 ```
 
-> 💡 **重要提醒**: 每次修改 Java 代码后，都需要重新运行 `ant clean dist` 重新构建，模拟器才会加载新代码
+### 安装到真机
 
-会弹出 Swing GUI 窗口运行你的应用，开发阶段不用每次传到真机测试！
+1. 将 `MJGA.jar` 和 `MJGA.jad` 传到手机
+2. 点击 `.jad` 文件安装
+3. 允许网络权限
 
-### 安装到手机真机
+## 📋 使用说明
 
-1. 构建得到 `dist/MJGA.jad` 和 `dist/MJGA.jar`
-2. 通过蓝牙/存储卡传到 W995
-3. 在手机文件管理器点击 `.jad` 安装
-4. 首次运行允许网络权限
+### 界面布局
 
-## ⚠️ 已知坑
+```
+┌─────────────────────────────┐
+│ MJGA Chat                   │
+├─────────────────────────────┤
+│ 就绪，请输入问题             │
+│ 输入问题: [____________]   │
+│                             │
+│ 你: 问题1...               │
+│ AI: 回答前60字...          │
+│ [菜单→切换展开查看全部]     │
+│ -------------------------   │
+│                             │
+├─────────────────────────────┤
+│ 选项            返回       │
+└─────────────────────────────┘
+```
 
-| 问题 | 解决方案 |
-|------|---------|
-| Maven Central 找不到 `cldcapi11` / `midpapi20` | 正确坐标 `org.microemu:cldcapi11:2.0.4` / `org.microemu:midpapi20:2.0.4`，本项目已包含 |
-| Java 26+ 不支持 `source 1.6` | `build.xml` 已设置 `source/target = 1.8` |
-| 堆内存溢出 | 及时释放对象，复用字符串缓冲区，避免创建大对象 |
+### 操作说明
 
-## 📊 构建验证
+| 操作 | 步骤 |
+|------|------|
+| **发送问题** | 1. 输入框输入问题 → 2. 左软键"选项" → 3. 选择"发送" |
+| **切换折叠** | 1. 左软键"选项" → 2. 选择"切换展开" |
+| **返回首页** | 1. 右软键"返回" |
 
-当前状态: **✅ 首次构建成功**
-- 编译: 通过
-- 输出: `dist/MJGA.jar` (4KB), `dist/MJGA.jad`
+### 折叠/展开功能
 
-## 📝 开发计划
+- **默认折叠**：回答超过 60 字符时，只显示前 60 字符 + `...`
+- **提示文字**：`[菜单→切换展开查看全部]`
+- **点击菜单**：选择"切换展开"全部展开或全部折叠
 
-详见 [根目录 README](../../README.md) 整体路线图
+## 🔌 服务端配置
 
-## 📄 许可证
+客户端需要连接 **openclaw-proxy** 反向代理服务：
+
+默认地址：`http://localhost:8080/v1/chat/completions`
+
+如需修改，请编辑 `src/com/mjga/midlet/MJGAMidlet.java` 中的 `API_URL` 常量。
+
+## 📦 技术栈
+
+- **J2ME MIDP 2.0** - 移动信息设备描述符
+- **CLDC 1.1** - 连接有限设备配置
+- **LwUIT** - 轻量级 UI 工具包（Form/StringItem/TextField）
+- **HttpConnection** - 网络请求
+
+## ⚙️ 目录结构
+
+```
+apps/mjga-j2me/
+├── build.xml             # Ant 构建脚本
+├── run-emulator.sh       # 模拟器启动脚本
+├── lib/                  # J2ME 核心类库
+├── src/com/mjga/
+│   ├── midlet/           # MIDlet 入口
+│   │   └── MJGAMidlet.java
+│   ├── network/          # 网络请求
+│   │   └── HttpClient.java
+│   ├── ui/               # UI 界面
+│   │   └── ChatScreen.java
+│   └── util/             # 工具类
+│       └── JsonParser.java
+├── build/                # 编译输出
+└── dist/                 # 最终 JAR/JAD
+```
+
+## 🎯 内存优化
+
+考虑到 W995 手机只有约 1.5MB 堆内存：
+
+- ✅ 手工解析 JSON（不使用第三方库）
+- ✅ 及时关闭流和连接
+- ✅ 使用 StringBuffer 拼接
+- ✅ 回答折叠（减少渲染压力）
+- ✅ 使用小字体节省空间
+
+## 📄 License
 
 MIT License

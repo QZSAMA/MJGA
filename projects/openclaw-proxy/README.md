@@ -1,200 +1,149 @@
-# openclaw-proxy - LLM 反向代理
+# openclaw-proxy - AI 反向代理服务
 
-> 为 J2ME 客户端提供 HTTP 访问 LLM API 的代理服务<br>
-> 当前默认配置：字节跳动火山方舟<br>
-> **提供 Go 和 Python 两个版本，可以选择使用**
+> 为 J2ME 客户端提供 HTTP 访问 LLM API 的代理服务
+> 提供 Go 和 Python 两个版本，可以按需选择
 
-## 🎯 作用
+## 📋 项目简介
 
-解决 J2ME 客户端 TLS 版本兼容性问题：
-- J2ME `HttpConnection` 只支持 **TLS 1.0**
-- 现代 OpenAI API 要求 **TLS 1.2+**
-- 本代理接收 J2ME 的明文 HTTP 请求，通过 HTTPS 转发给 LLM API
-- 将响应返回给 J2ME 客户端
+openclaw-proxy 是 MJGA 项目的反向代理服务，解决 J2ME 客户端 TLS 1.0 兼容性问题。
 
-## 🏗️ 架构
-
+**架构图：**
 ```
-J2ME (W995) --HTTP--> openclaw-proxy --HTTPS--> LLM API
-                   ^                      |
-                   |                      v
-                   \---------Response-------/
+J2ME 客户端 (W995)
+        ↓
+  HTTP (plaintext)
+        ↓
+ openclaw-proxy ← 本项目
+        ↓
+  HTTPS (TLS 1.2+)
+        ↓
+字节跳动 / OpenAI API
 ```
 
-## ✨ 功能
+## 🎯 核心功能
 
-- ✅ 接收 J2ME 聊天请求
-- ✅ 转发给 LLM API
+- ✅ 接收 J2ME HTTP 请求，转发到 LLM API (HTTPS)
+- ✅ 设置 Authorization Bearer 头
 - ✅ 原样返回响应给 J2ME
-- ✅ 在终端打印 AI 回复方便调试
-- ✅ 支持 `FORCE_ENGLISH` 强制英文回复（解决模拟器中文显示乱码）
-- ⏳ 压缩响应减小体积适配低速网络
-- ⏳ 语音合成格式转换 (text → mp3)
-- ⏳ 图片尺寸压缩 (AI image → 240x320 for J2ME)
+- ✅ 处理 JSON 格式请求与响应
+- ✅ 终端显示调试日志
+
+## 📦 可用版本
+
+| 版本 | 目录 | 推荐场景 |
+|------|------|---------|
+| **Go** | `openclaw-proxy-go/` | 生产环境部署，单二进制文件 |
+| **Python** | `openclaw-proxy-py/` | 开发调试，使用 uv 包管理 |
+
+---
 
 ## 🚀 快速开始
 
-### 选择版本
-
-有两个版本可供选择：
-
-| 版本 | 位置 | 说明 |
-|------|------|------|
-| Go | [openclaw-proxy-go](./openclaw-proxy-go/) | 编译后单文件部署，适合生产环境 |
-| Python | [openclaw-proxy-py](./openclaw-proxy-py/) | 开发方便，使用 uv 管理依赖 |
-
----
-
-## Python 版本 (推荐开发使用)
-
-### 环境要求
-- Python 3.10+
-- [uv](https://github.com/astral-sh/uv) 包管理
-
-### 快速开始
+### 方式一：Python 版本开发（推荐）
 
 ```bash
-# 进入项目目录
 cd projects/openclaw-proxy/openclaw-proxy-py
 
-# 安装依赖（使用 uv）
+# 使用 uv 安装依赖
 uv sync
 
-# 设置环境变量
-export API_KEY=80f1b58b-9fc6-40f5-bc0b-968181fdae12
-# 默认已经配置好了：
-# API_URL=https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions
-# MODEL=ark-code-latest
-# PORT=8080
-# FORCE_ENGLISH= （不设置就是禁用，设置 y/true/1 就是启用）
+# 设置 API KEY (你的字节跳动 API KEY)
+export API_KEY=your-api-key-here
 
-# 运行
+# 启动服务
 uv run python main.py
 ```
 
-### Docker（Python 版本）
+服务会在 `http://localhost:8080` 启动。
+
+### 方式二：Go 版本部署（推荐生产）
 
 ```bash
-# 你可以自己写 Dockerfile，或者使用 Go 版本的 Dockerfile 模板
-```
-
----
-
-## Go 版本（推荐生产使用）
-
-### 快速开始
-
-```bash
-# 进入项目目录
 cd projects/openclaw-proxy/openclaw-proxy-go
-
-# 设置环境变量
-export API_KEY=80f1b58b-9fc6-40f5-bc0b-968181fdae12
-# 默认已经配置好了：
-# API_URL=https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions
-# MODEL=ark-code-latest
-# PORT=8080
 
 # 编译
 go build -o openclaw-proxy
 
-# 运行
+# 设置 API KEY 并启动
+export API_KEY=your-api-key-here
 ./openclaw-proxy
 ```
 
-### Docker 部署
+### Docker 部署 (Go 版本)
 
 ```bash
+cd openclaw-proxy-go
 docker build -t openclaw-proxy .
 docker run -d -p 8080:8080 \
-  -e API_KEY=80f1b58b-9fc6-40f5-bc0b-968181fdae12 \
+  -e API_KEY=your-api-key \
   openclaw-proxy
 ```
 
----
+## 🔧 环境变量
 
-### 环境变量说明
-
-| 变量 | 说明 | 默认 |
-|------|------|------|
-| `API_KEY` | API 密钥 (Authorization Bearer) | **必须设置** |
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `API_KEY` | 字节跳动 API 密钥 | **必须设置** |
 | `API_URL` | LLM API 端点 | `https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions` |
-| `MODEL` | 模型/端点 ID | `ark-code-latest` |
 | `PORT` | 监听端口 | `8080` |
-| `FORCE_ENGLISH` | 强制英文回复 (y/true/1 启用) | 未设置 = 禁用 |
 
-> 已经配置好了你的信息：
-> - **API_KEY** 需要你设置环境变量 → `export API_KEY=80f1b58b-9fc6-40f5-bc0b-968181fdae12`
-> - **API_URL** = `https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions`
-> - **MODEL** = `ark-code-latest` (你的 endpoint ID)
+## 📡 API 端点
 
-### API 格式说明
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/v1/chat/completions` | 聊天请求转发 |
 
-字节跳动火山方舟 coding endpoint API 格式兼容 OpenAI:
-- **请求**:
+**请求格式：**
 ```json
 {
-  "model": "endpoint-id",
+  "model": "ark-code-latest",
   "messages": [
-    {"role": "user", "content": "question"}
+    {"role": "user", "content": "问题内容"}
   ]
 }
 ```
-- **响应** (OpenAI 格式):
+
+**响应格式：**
 ```json
 {
   "choices": [
     {
       "message": {
-        "content": "AI reply content"
+        "content": "AI 回答内容"
       }
     }
   ]
 }
 ```
 
-### 测试
-
-```bash
-# 健康检查
-curl http://localhost:8080/ping
-# => pong
-
-# 测试聊天
-curl -X POST http://localhost:8080/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "ark-code-latest",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'
-```
-
-## 📝 API 接口
-
-| 接口 | 方法 | 说明 |
-|------|------|------|
-| `/ping` | GET | 健康检查 |
-| `/v1/chat/completions` | POST | 转发聊天请求到 LLM |
-
-请求和响应格式与 OpenAI API 完全一致，J2ME 客户端可以直接使用。
-
-## 📝 项目结构
+## 📁 目录结构
 
 ```
 projects/openclaw-proxy/
-├── openclaw-proxy-go/          # Go 版本
-│   ├── go.mod
-│   ├── main.go
-│   ├── Dockerfile
-│   └── README.md
-├── openclaw-proxy-py/          # Python 版本 (uv 管理依赖)
-│   ├── pyproject.toml
-│   ├── main.py
-│   ├── .gitignore
-│   └── README.md
-└── README.md                 # 本文档
+├── README.md              # 本文档
+├── openclaw-proxy-go/     # Go 版本
+│   ├── main.go           # 主程序
+│   ├── go.mod            # Go 模块定义
+│   ├── go.sum            # 依赖锁定
+│   ├── Dockerfile        # Docker 部署
+│   └── README.md         # Go 版本详细说明
+└── openclaw-proxy-py/     # Python 版本
+    ├── main.py           # 主程序
+    ├── pyproject.toml    # uv 项目配置
+    ├── .gitignore        # Git 忽略
+    └── README.md         # Python 版本详细说明
 ```
 
-## 📄 许可证
+## 🔍 为什么需要反向代理？
+
+W995 手机的 J2ME `HttpsConnection` 只支持 **TLS 1.0**：
+- ❌ TLS 1.0 已被现代服务弃用
+- ❌ 字节跳动 API 需要 TLS 1.2+
+- ✅ 使用反向代理，J2ME 发 HTTP，代理转 HTTPS
+
+**J2ME 客户端配置：**
+- API URL: `http://你的代理地址:8080/v1/chat/completions`
+
+## 📄 License
 
 MIT License

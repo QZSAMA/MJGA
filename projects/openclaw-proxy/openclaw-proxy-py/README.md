@@ -1,56 +1,86 @@
-# openclaw-proxy - Python 版本
+# openclaw-proxy-py - Python 版本
 
-> LLM reverse proxy for J2ME client<br>
-> Python with uv dependency management
+> 基于 FastAPI 的 LLM 反向代理，使用 uv 进行包管理
 
-## 🚀 Quick Start
+## 🚀 快速开始
 
-### Requirements
+### 环境要求
+
 - Python 3.10+
-- [uv](https://github.com/astral-sh/uv) for dependency management
+- [uv](https://github.com/astral-sh/uv) - 超快的包管理器
 
-### Install & Run
+### 安装依赖
 
 ```bash
-# Enter directory
+# 进入目录
 cd projects/openclaw-proxy/openclaw-proxy-py
 
-# Install dependencies with uv
+# 使用 uv 安装依赖（自动创建虚拟环境）
 uv sync
+```
 
-# Set environment variables
-export API_KEY=80f1b58b-9fc6-40f5-bc0b-968181fdae12
-# Defaults already set:
-# API_URL=https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions
-# MODEL=ark-code-latest
-# PORT=8080
-# FORCE_ENGLISH=y  # Enable force English reply
+### 启动服务
 
-# Run
+```bash
+# 设置 API KEY
+export API_KEY=your-api-key-here
+
+# 可选：自定义 API URL 和端口
+# export API_URL=https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions
+# export PORT=8080
+
+# 启动服务
 uv run python main.py
 ```
 
-## 📋 Environment Variables
+服务启动后会在 `http://0.0.0.0:8080` 监听。
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `API_KEY` | API key (Authorization Bearer) | **Required** |
-| `API_URL` | LLM API endpoint | `https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions` |
-| `MODEL` | Model/endpoint ID | `ark-code-latest` |
-| `PORT` | Listen port | `8080` |
-| `FORCE_ENGLISH` | Force reply in English (y/true/1 to enable) | Not set = disabled |
+## 🔧 环境变量
 
-## ✨ Features
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `API_KEY` | 字节跳动 API 密钥 | **必须设置** |
+| `API_URL` | LLM API 端点 | `https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions` |
+| `PORT` | 监听端口 | `8080` |
 
-- ✅ Receives J2ME chat request
-- ✅ Forwards to LLM API
-- ✅ Returns response to J2ME
-- ✅ Prints AI reply in terminal for debugging
-- ✅ Supports `FORCE_ENGLISH` to fix emulator Chinese display issue
+## 📡 测试接口
 
-## 📝 API
+```bash
+# 发送测试请求
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "ark-code-latest",
+    "messages": [{"role": "user", "content": "你好"}]
+  }'
+```
 
-Same as Go version, OpenAI compatible format. J2ME client works directly.
+## 📦 技术栈
+
+- **FastAPI** - 高性能 Web 框架
+- **httpx** - 异步 HTTP 客户端
+- **uv** - 包管理工具
+
+## 📁 项目结构
+
+```
+openclaw-proxy-py/
+├── main.py            # 主程序
+├── pyproject.toml     # uv 项目配置
+└── README.md          # 本文档
+```
+
+## 💡 开发调试
+
+uv 会自动创建 `.venv` 虚拟环境，你可以：
+
+```bash
+# 进入虚拟环境
+source .venv/bin/activate  # Linux/macOS
+
+# 直接运行 Python
+uv run python
+```
 
 ## 📄 License
 
