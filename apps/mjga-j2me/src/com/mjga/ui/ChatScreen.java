@@ -1,13 +1,13 @@
 package com.mjga.ui;
 
 import java.util.Vector;
+import javax.microedition.lcdui.Canvas;
 import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Font;
 import javax.microedition.lcdui.Form;
 import javax.microedition.lcdui.StringItem;
-import javax.microedition.lcdui.TextBox;
 import javax.microedition.lcdui.TextField;
 import com.mjga.network.HttpClient;
 import com.mjga.util.JsonParser;
@@ -27,6 +27,20 @@ class QAPair {
 
 public class ChatScreen extends Form implements CommandListener, Runnable {
     
+    protected void keyPressed(int keyCode) {
+        if (getGameAction(keyCode) == Canvas.RIGHT) {
+            long currentTime = System.currentTimeMillis();
+            long timeDiff = currentTime - lastRightKeyTime;
+            
+            if (timeDiff <= DOUBLE_CLICK_THRESHOLD && timeDiff > 0) {
+                toggleAll();
+            }
+            
+            lastRightKeyTime = currentTime;
+        }
+        super.keyPressed(keyCode);
+    }
+    
     private Command sendCommand;
     private Command backCommand;
     private Command toggleCommand;
@@ -40,6 +54,9 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
     private boolean processing;
     private Font smallFont;
     private static final int COLLAPSED_LENGTH = 60;
+    
+    private long lastRightKeyTime;
+    private static final long DOUBLE_CLICK_THRESHOLD = 500;
     
     public ChatScreen(MJGAMidlet midlet, String apiUrl, String model) {
         super("MJGA Chat");
@@ -61,7 +78,7 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
         this.backCommand = new Command("返回", Command.BACK, 2);
         this.toggleCommand = new Command("切换展开", Command.ITEM, 3);
         
-        this.statusItem = new StringItem(null, "就绪，请输入问题");
+        this.statusItem = new StringItem(null, "就绪，请输入问题（连按右键切换展开）");
         append(this.statusItem);
         this.statusItem.setFont(this.smallFont);
         
@@ -104,6 +121,17 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
         }
         
         rebuildChatView();
+    }
+    
+    public void itemStateChanged(Item item) {
+        long currentTime = System.currentTimeMillis();
+        long timeDiff = currentTime - lastClickTime;
+        
+        if (timeDiff <= DOUBLE_CLICK_THRESHOLD && timeDiff > 0) {
+            toggleAll();
+        }
+        
+        lastClickTime = currentTime;
     }
     
     public void run() {
@@ -181,7 +209,7 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
             String displayAnswer;
             if (qa.collapsed && qa.answer.length() > COLLAPSED_LENGTH) {
                 displayAnswer = qa.answer.substring(0, COLLAPSED_LENGTH) + "...";
-                StringItem aItem = new StringItem(null, "AI: " + displayAnswer + "\n[菜单→切换展开查看全部]\n");
+                StringItem aItem = new StringItem(null, "AI: " + displayAnswer + "\n[连按右键切换]\n");
                 aItem.setFont(this.smallFont);
                 append(aItem);
             } else {
