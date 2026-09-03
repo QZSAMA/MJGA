@@ -1,83 +1,123 @@
 package com.mjga.network;
 
-import javax.microedition.io.Connector;
-import javax.microedition.io.HttpConnection;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import javax.microedition.io.Connector;
+import javax.microedition.io.HttpConnection;
 
-/**
- * HTTP 客户端 - 用于向 openclaw-proxy 发送请求
- * 
- * 遵循 J2ME MIDP 2.0 规范，支持 POST 请求，内置重试机制
- * 严格控制内存使用，及时释放所有连接和流
- */
-public class HttpClient {
-    
-    /** 最大重试次数 */
-    private static final int MAX_RETRY = 3;
-    
-    /** 连接超时 (ms) */
-    private static final int TIMEOUT = 30000;
-    
-    /**
-     * 发送 POST 请求到指定 URL
-     * 
-     * @param url 目标 URL (openclaw-proxy 地址)
-     * @param body JSON 请求体字符串
-     * @return 响应字符串，失败返回 null
-     */
-    public String sendPost(String url, String body) {
-        HttpConnection conn = null;
-        OutputStream os = null;
-        InputStream is = null;
-        StringBuffer response = null;
-        
-        for (int retry = 0; retry < MAX_RETRY; retry++) {
+/** Bounded UTF-8 HTTP client for the MJGA proxy. */
+public final class HttpClient {
+    private static final int MAX_ATTEMPTS = 3;
+
+    private final String clientToken;
+    private final int maxResponseBytes;
+
+    public HttpClient(String clientToken, int maxResponseBytes) {
+        this.clientToken = clientToken == null ? "" : clientToken;
+        this.maxResponseBytes = maxResponseBytes;
+    }
+
+    public HttpResponse sendPost(String url, String body) {
+        final byte[] requestBytes;
+        try {
+            requestBytes = body.getBytes("UTF-8");
+        } catch (UnsupportedEncodingException error) {
+            return HttpResponse.network(HttpResponse.ERROR_NETWORK);
+        }
+
+        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            HttpConnection connection = null;
+            OutputStream output = null;
+            InputStream input = null;
+            int statusCode = -1;
             try {
-                // 打开连接
-                conn = (HttpConnection) Connector.open(url);
-                conn.setRequestMethod(HttpConnection.POST);
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("Content-Length", 
-                    Integer.toString(body.getBytes().length));
-                
-                // 发送请求体
-                os = conn.openOutputStream();
-                os.write(body.getBytes());
-                os.flush();
-                
-                // 读取响应
-                int ch;
-                response = new StringBuffer();
-                is = conn.openInputStream();
-                while ((ch = is.read()) != -1) {
-                    response.append((char) ch);
-                }
-                
-                // 成功获取响应，返回
-                return response.toString();
-                
-            } catch (IOException e) {
-                // 重试
+                connection = (HttpConnection) Connector.open(url);
+                connection.setRequestMethod(HttpConnection.POST);
+                connection.setRequestProperty(
+                    "Content-Type",
+                    "application/json; charset=utf-8"
+                );
+                connection.setRequestProperty(
+                    "Content-Length",
+                    Integer.toString(requestBytes.length)
+                );
+                connection.setRequestProperty("Connection", "close");
+                connection.setRequestProperty("X-MJGA-Token", this.clientToken);
+
+                output = connection.openOutputStream();
+                output.write(requestBytes);
+                output.flush();
+
+                statusCode = connection.getResponseCode();
                 try {
-                    Thread.sleep(1000 * (retry + 1));
-                } catch (InterruptedException ie) {
-                    // ignore
+                    input = connection.openInputStream();
+                    String responseBody = ResponseReader.readUtf8(
+                        input,
+                        this.maxResponseBytes
+                    );
+                    return HttpResponse.http(statusCode, responseBody);
+                } catch (IOException readError) {
+                    if ("response too large".equals(readError.getMessage())) {
+                        return HttpResponse.network(
+                            HttpResponse.ERROR_RESPONSE_TOO_LARGE
+                        );
+                    }
+                    if (statusCode >= 400) {
+                        return HttpResponse.http(statusCode, "");
+                    }
+                    return HttpResponse.network(HttpResponse.ERROR_NETWORK);
                 }
+            } catch (IOException error) {
+                if (statusCode >= 0 || attempt == MAX_ATTEMPTS - 1) {
+                    return HttpResponse.network(HttpResponse.ERROR_NETWORK);
+                }
+                pauseBeforeRetry(attempt);
             } finally {
-                // 确保所有资源被关闭释放内存
-                try {
-                    if (is != null) is.close();
-                    if (os != null) os.close();
-                    if (conn != null) conn.close();
-                } catch (IOException e) {
-                    // ignore
-                }
+                close(input);
+                close(output);
+                close(connection);
             }
         }
-        
-        // 所有重试都失败
-        return null;
+        return HttpResponse.network(HttpResponse.ERROR_NETWORK);
+    }
+
+    private static void pauseBeforeRetry(int attempt) {
+        try {
+            Thread.sleep(1000L * (attempt + 1));
+        } catch (InterruptedException ignored) {
+            // MIDP has no portable interruption recovery requirement here.
+        }
+    }
+
+    private static void close(InputStream input) {
+        if (input != null) {
+            try {
+                input.close();
+            } catch (IOException ignored) {
+                // Best-effort cleanup.
+            }
+        }
+    }
+
+    private static void close(OutputStream output) {
+        if (output != null) {
+            try {
+                output.close();
+            } catch (IOException ignored) {
+                // Best-effort cleanup.
+            }
+        }
+    }
+
+    private static void close(HttpConnection connection) {
+        if (connection != null) {
+            try {
+                connection.close();
+            } catch (IOException ignored) {
+                // Best-effort cleanup.
+            }
+        }
     }
 }

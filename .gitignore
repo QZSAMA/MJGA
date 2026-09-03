@@ -13,7 +13,14 @@ gradle/
 
 # Project build output
 **/build/
+**/build-manual/
+**/build-test/
 **/dist/
+
+# Local language tooling
+**/.venv/
+**/.pytest_cache/
+**/__pycache__/
 
 # Output JAR/JAD (don't commit binary outputs)
 **/dist/*.jar
@@ -28,5 +35,8 @@ Thumbs.db
 
 # Local config
 .env
-config.properties
+apps/mjga-j2me/config.properties
 local.properties
+
+# Isolated development worktrees
+.worktrees/

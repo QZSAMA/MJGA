@@ -1,120 +1,195 @@
 package com.mjga.util;
 
 /**
- * JSON 解析工具 - 手工解析 LLM 响应
- * 
- * 因为 J2ME 内存有限，我们只解析需要的关键字段
- * OpenAI 兼容格式 (字节跳动 coding endpoint 使用这个格式):
- * {
- *   "choices": [
- *     {
- *       "message": {
- *         "content": "回复文本"
- *       }
- *     }
- *   ]
- * }
- * 
- * 我们只需要提取第一个 choice 的 message.content
+ * Minimal JSON helpers for the OpenAI-compatible text contract.
+ *
+ * The implementation deliberately avoids regular expressions and third-party
+ * parsers so it remains usable on strict CLDC/MIDP devices.
  */
-public class JsonParser {
-    
+public final class JsonParser {
+    private JsonParser() {
+    }
+
     /**
-     * 从 LLM 响应中提取回复文本
-     * 
-     * @param jsonResponse 完整 JSON 响应字符串
-     * @return 提取出的回复文本，失败返回 null
+     * Extract the first string value associated with a content key.
+     *
+     * @param jsonResponse complete JSON response
+     * @return decoded content, or null when the field/string is invalid
      */
     public static String extractChatResponse(String jsonResponse) {
         if (jsonResponse == null || jsonResponse.length() == 0) {
             return null;
         }
-        
-        // 找 "content":" 
-        int contentStart = jsonResponse.indexOf("\"content\":\"");
-        if (contentStart == -1) {
-            // 试试空格不同的格式
-            contentStart = jsonResponse.indexOf("content\": \"");
-            if (contentStart == -1) {
-                // 试试 content 字段其他格式
-                contentStart = jsonResponse.indexOf("\"content\":");
-                if (contentStart == -1) {
-                    return null;
-                }
-                contentStart += "\"content\":".length();
-                // 跳过可能的空格
-                while (contentStart < jsonResponse.length() && 
-                       Character.isWhitespace(jsonResponse.charAt(contentStart))) {
-                    contentStart++;
-                }
-                if (jsonResponse.charAt(contentStart) == '"') {
-                    contentStart++;
-                }
-            } else {
-                contentStart += "content\": \"".length();
-            }
-        } else {
-            contentStart += "\"content\":\"".length();
+        int valueStart = findContentValue(jsonResponse);
+        if (valueStart < 0) {
+            return null;
         }
-        
-        // 从这里开始找下一个引号
-        int contentEnd = jsonResponse.indexOf("\"", contentStart);
-        if (contentEnd == -1) {
-            // 试试找逗号或闭括号
-            contentEnd = jsonResponse.indexOf(",", contentStart);
-            if (contentEnd == -1) {
-                contentEnd = jsonResponse.indexOf("}", contentStart);
-                if (contentEnd == -1) {
-                    return null;
-                }
-            }
-        }
-        
-        // 提取内容
-        String content = jsonResponse.substring(contentStart, contentEnd);
-        
-        // 简单处理转义
-        content = content.replaceAll("\\\\\"", "\"");
-        content = content.replaceAll("\\\\n", "\n");
-        
-        return content;
+        return scanJsonString(jsonResponse, valueStart);
     }
-    
+
     /**
-     * 构造聊天请求 JSON
-     * 
-     * 字节跳动 ark API 格式 (OpenAI 兼容):
-     * {
-     *   "model": "endpoint-id",
-     *   "messages": [
-     *     {"role": "user", "content": "question"}
-     *   ]
-     * }
-     * 
-     * @param model 模型/端点 ID
-     * @param userMessage 用户消息
-     * @return JSON 字符串
+     * Build the small chat-completions request used by the device client.
      */
     public static String buildChatRequest(String model, String userMessage) {
-        StringBuffer sb = new StringBuffer();
-        sb.append("{");
-        sb.append("\"model\":\"").append(model).append("\",");
-        sb.append("\"messages\":[");
-        sb.append("{\"role\":\"user\",\"content\":\"").append(escapeJson(userMessage)).append("\"}");
-        sb.append("]");
-        sb.append("}");
-        return sb.toString();
+        StringBuffer request = new StringBuffer();
+        request.append("{\"model\":\"");
+        request.append(escapeJson(model));
+        request.append("\",\"messages\":[{\"role\":\"user\",\"content\":\"");
+        request.append(escapeJson(userMessage));
+        request.append("\"}]}");
+        return request.toString();
     }
-    
-    /**
-     * 简单转义 JSON 字符串
-     */
-    private static String escapeJson(String s) {
-        if (s == null) return "";
-        s = s.replace("\\", "\\\\");
-        s = s.replace("\"", "\\\"");
-        s = s.replace("\n", "\\n");
-        s = s.replace("\r", "");
-        return s;
+
+    private static int findContentValue(String json) {
+        int key = json.indexOf("\"content\"");
+        if (key < 0) {
+            return -1;
+        }
+        int index = key + 9;
+        while (index < json.length()
+                && Character.isWhitespace(json.charAt(index))) {
+            index++;
+        }
+        if (index >= json.length() || json.charAt(index) != ':') {
+            return -1;
+        }
+        index++;
+        while (index < json.length()
+                && Character.isWhitespace(json.charAt(index))) {
+            index++;
+        }
+        if (index >= json.length() || json.charAt(index) != '"') {
+            return -1;
+        }
+        return index + 1;
+    }
+
+    private static String scanJsonString(String json, int start) {
+        StringBuffer output = new StringBuffer();
+        for (int index = start; index < json.length(); index++) {
+            char value = json.charAt(index);
+            if (value == '"') {
+                return output.toString();
+            }
+            if (value != '\\') {
+                if (value < 0x20) {
+                    return null;
+                }
+                output.append(value);
+                continue;
+            }
+            index++;
+            if (index >= json.length()) {
+                return null;
+            }
+            char escaped = json.charAt(index);
+            switch (escaped) {
+                case '"':
+                    output.append('"');
+                    break;
+                case '\\':
+                    output.append('\\');
+                    break;
+                case '/':
+                    output.append('/');
+                    break;
+                case 'b':
+                    output.append('\b');
+                    break;
+                case 'f':
+                    output.append('\f');
+                    break;
+                case 'n':
+                    output.append('\n');
+                    break;
+                case 'r':
+                    output.append('\r');
+                    break;
+                case 't':
+                    output.append('\t');
+                    break;
+                case 'u':
+                    if (index + 4 >= json.length()) {
+                        return null;
+                    }
+                    int code = 0;
+                    for (int offset = 1; offset <= 4; offset++) {
+                        int hex = hexValue(json.charAt(index + offset));
+                        if (hex < 0) {
+                            return null;
+                        }
+                        code = (code << 4) | hex;
+                    }
+                    output.append((char) code);
+                    index += 4;
+                    break;
+                default:
+                    return null;
+            }
+        }
+        return null;
+    }
+
+    private static int hexValue(char value) {
+        if (value >= '0' && value <= '9') {
+            return value - '0';
+        }
+        if (value >= 'a' && value <= 'f') {
+            return value - 'a' + 10;
+        }
+        if (value >= 'A' && value <= 'F') {
+            return value - 'A' + 10;
+        }
+        return -1;
+    }
+
+    private static String escapeJson(String value) {
+        if (value == null) {
+            return "";
+        }
+        StringBuffer escaped = new StringBuffer();
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            switch (character) {
+                case '"':
+                    escaped.append("\\\"");
+                    break;
+                case '\\':
+                    escaped.append("\\\\");
+                    break;
+                case '\b':
+                    escaped.append("\\b");
+                    break;
+                case '\f':
+                    escaped.append("\\f");
+                    break;
+                case '\n':
+                    escaped.append("\\n");
+                    break;
+                case '\r':
+                    escaped.append("\\r");
+                    break;
+                case '\t':
+                    escaped.append("\\t");
+                    break;
+                default:
+                    if (character < 0x20) {
+                        appendUnicodeEscape(escaped, character);
+                    } else {
+                        escaped.append(character);
+                    }
+                    break;
+            }
+        }
+        return escaped.toString();
+    }
+
+    private static void appendUnicodeEscape(StringBuffer output, char value) {
+        final String digits = "0123456789abcdef";
+        output.append("\\u");
+        output.append(digits.charAt((value >> 12) & 0x0f));
+        output.append(digits.charAt((value >> 8) & 0x0f));
+        output.append(digits.charAt((value >> 4) & 0x0f));
+        output.append(digits.charAt(value & 0x0f));
     }
 }
