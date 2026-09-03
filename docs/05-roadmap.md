@@ -20,7 +20,7 @@
 
 ### 自动检查已通过（本地）
 
-- [x] Python 19 项 pytest；
+- [x] Python 20 项 pytest；
 - [x] Python `compileall`；
 - [x] Go `go test ./...`；
 - [x] Go `go vet ./...`；

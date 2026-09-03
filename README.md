@@ -101,7 +101,7 @@ Windows PowerShell：
 
 本次安全文本基线已在本地验证：
 
-- Python：19 项 pytest 通过，模块字节码编译通过；
+- Python：20 项 pytest 通过，模块字节码编译通过；
 - Go：`go test ./...` 与 `go vet ./...` 通过；
 - J2ME：JSON、UTF-8 响应、历史上限三组测试通过，`ant clean test dist` 通过；
 - 仓库：凭据模式、跟踪的本地配置/生成二进制和 whitespace 检查通过。
