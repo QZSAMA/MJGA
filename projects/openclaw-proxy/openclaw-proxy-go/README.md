@@ -1,87 +1,37 @@
-# openclaw-proxy-go - Go 版本
+# openclaw-proxy-go
 
-> 高性能 LLM 反向代理，编译后生成单二进制文件，方便部署
+Go 1.21 + Gin 实现的 MJGA 有界文本代理。完整协议和安全说明见 [上级文档](../README.md)。
 
-## 🚀 快速开始
-
-### 环境要求
-
-- Go 1.20+
-
-### 编译运行
+## 运行
 
 ```bash
-# 进入目录
-cd projects/openclaw-proxy/openclaw-proxy-go
+go test ./...
+go vet ./...
+go build -o openclaw-proxy .
 
-# 编译
-go build -o openclaw-proxy
-
-# 设置 API KEY
-export API_KEY=your-api-key-here
-
-# 启动服务
+export API_KEY=replace-with-your-upstream-key
+export CLIENT_TOKEN=replace-with-a-long-random-token
 ./openclaw-proxy
 ```
 
-服务启动后会在 `http://0.0.0.0:8080` 监听。
+任一必填密钥缺失都会阻止启动。可选环境变量为 `API_URL`、`PORT`、`UPSTREAM_TIMEOUT_SECONDS`、`MAX_REQUEST_BYTES`、`MAX_RESPONSE_BYTES` 和 `RATE_LIMIT_PER_MINUTE`，默认值见上级文档。
 
-### Docker 部署
-
-```bash
-# 构建镜像
-docker build -t openclaw-proxy .
-
-# 运行容器
-docker run -d -p 8080:8080 \
-  -e API_KEY=your-api-key \
-  openclaw-proxy
-```
-
-## 🔧 环境变量
-
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `API_KEY` | 字节跳动 API 密钥 | **必须设置** |
-| `API_URL` | LLM API 端点 | `https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions` |
-| `PORT` | 监听端口 | `8080` |
-
-## 📡 测试接口
+## Docker
 
 ```bash
-# 发送测试请求
-curl -X POST http://localhost:8080/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "ark-code-latest",
-    "messages": [{"role": "user", "content": "你好"}]
-  }'
+docker build -t mjga-openclaw-proxy .
+docker run --rm -p 8080:8080 \
+  -e API_KEY=replace-with-your-upstream-key \
+  -e CLIENT_TOKEN=replace-with-a-long-random-token \
+  mjga-openclaw-proxy
 ```
 
-## 📦 技术栈
+Dockerfile 使用 `go.mod/go.sum` 缓存依赖，并构建去除路径/符号信息的静态 Linux 二进制。
 
-- **Gin** - Go Web 框架
-- **net/http** - 标准库 HTTP 客户端
-- **encoding/json** - 标准库 JSON 处理
+## 代码边界
 
-## 📁 项目结构
-
-```
-openclaw-proxy-go/
-├── main.go            # 主程序
-├── go.mod             # Go 模块定义
-├── go.sum             # 依赖锁定
-├── Dockerfile         # Docker 部署
-└── README.md          # 本文档
-```
-
-## 💡 特性
-
-- ✅ 高性能，Go 原生并发
-- ✅ 单二进制文件，部署方便
-- ✅ 可编译到多种平台
-- ✅ Docker 部署友好
-
-## 📄 License
-
-MIT License
+- `config.go`：必填密钥与正整数配置验证；
+- `limiter.go`：线程安全的 60 秒固定窗口；
+- `server.go`：可注入 HTTP 客户端、日志器和限流器的路由；
+- `main.go`：配置加载和 `http.Server` 启动；
+- `*_test.go`：`httptest` 与自定义 `RoundTripper` 合同测试，不访问真实 LLM。

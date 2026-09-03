@@ -1,161 +1,104 @@
-# J2ME 网络编程指南
+# J2ME 网络协议与安全边界
 
-## 核心 API: HttpConnection
+## 为什么需要代理
 
-J2ME MIDP 2.0 通过 `javax.microedition.io.HttpConnection` 提供标准 HTTP 支持，这就是我们所需要的全部。
+W995 的老旧 TLS 能力无法可靠连接现代 HTTPS LLM API。MJGA 因此把 TLS 终止放在 Go/Python 代理：
 
-### 基本使用示例
-
-```java
-import javax.microedition.io.*;
-import java.io.*;
-
-public class HttpClient {
-    
-    public String sendPostRequest(String url, String jsonBody) throws IOException {
-        HttpConnection conn = null;
-        OutputStream os = null;
-        InputStream is = null;
-        StringBuffer response = new StringBuffer();
-        
-        try {
-            conn = (HttpConnection) Connector.open(url);
-            conn.setRequestMethod(HttpConnection.POST);
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("Content-Length", 
-                Integer.toString(jsonBody.getBytes().length));
-            
-            // 发送请求体
-            os = conn.openOutputStream();
-            os.write(jsonBody.getBytes());
-            os.flush();
-            
-            // 读取响应
-            int ch;
-            is = conn.openInputStream();
-            while ((ch = is.read()) != -1) {
-                response.append((char) ch);
-            }
-            
-            return response.toString();
-        } finally {
-            // 一定要关闭所有流
-            if (is != null) is.close();
-            if (os != null) os.close();
-            if (conn != null) conn.close();
-        }
-    }
-}
+```text
+W995 -- HTTP --> MJGA proxy -- HTTPS --> OpenAI-compatible upstream
 ```
 
-## 对 OpenClaw API 请求格式
+手机到代理的 HTTP 是明文链路，包含设备令牌和对话文本。它只适用于可信家庭 LAN、VPN 或受控隧道；不能因为上游使用 HTTPS，就把公网 HTTP 暴露视为安全。
 
-我们客户端请求 OpenClaw API 大概是这样：
+## 端点
+
+### `GET /ping`
+
+无需鉴权，用于存活检查：
+
+```json
+{"status":"ok"}
+```
+
+### `POST /v1/chat/completions`
+
+请求头：
+
+```text
+Content-Type: application/json; charset=utf-8
+X-MJGA-Token: <与代理 CLIENT_TOKEN 相同的共享令牌>
+```
+
+请求体为最小 OpenAI 兼容结构：
 
 ```json
 {
-  "text": "你好，请帮我写一个冒泡排序",
-  "session_id": "xxxxxxxx"
+  "model": "ark-code-latest",
+  "messages": [
+    {"role": "user", "content": "你好"}
+  ]
 }
 ```
 
-响应格式：
+代理固定使用服务端配置的 `API_URL`，并只向上游设置 JSON Content-Type 与 `Authorization: Bearer <API_KEY>`。客户端不能通过请求覆盖上游目标或授权头。
+
+收到上游 HTTP 响应时，代理在响应大小范围内原样返回状态和内容。代理自身错误使用统一信封：
 
 ```json
 {
-  "response": "这是冒泡排序的Java代码...",
-  "success": true
+  "error": {
+    "code": "rate_limited",
+    "message": "request rate limit exceeded"
+  }
 }
 ```
 
-## JSON 处理
+| HTTP | code | 含义 |
+|---:|---|---|
+| 400 | `invalid_request` | UTF-8/JSON 或 messages 结构无效 |
+| 401 | `unauthorized` | 设备令牌缺失或错误 |
+| 413 | `request_too_large` | 请求超过配置上限 |
+| 429 | `rate_limited` | 当前 60 秒窗口已满 |
+| 502 | `upstream_unavailable` | 无法连接或读取上游 |
+| 502 | `upstream_response_too_large` | 上游响应超过配置上限 |
+| 504 | `upstream_timeout` | 上游超时 |
 
-J2ME 标准库没有内置 JSON 解析，我们有几个选择：
+## J2ME I/O 约束
 
-1. **轻量级 J2ME JSON 库**:
-   - [json-me](https://github.com/skylark/json-me) - 很小，适合 J2ME
-   - [mini-json](https://github.com/upokecenter/java-mini-json) - 兼容 J2ME
+客户端遵循以下顺序：
 
-2. **手工简单解析**: 因为我们请求响应结构很简单，可以手工解析，节省空间。
+1. 用 UTF-8 把 JSON 请求体编码一次；
+2. 以字节数设置 Content-Length；
+3. 发送 `Connection: close` 与 `X-MJGA-Token`；
+4. 先读取 HTTP 状态，再读取响应；
+5. 以 256 字节缓冲累计，超过 32768 字节立即失败；
+6. 用 UTF-8 解码，逐字符扫描 JSON 字符串转义；
+7. 收到 HTTP 状态后不重试；只对尚未收到状态的 I/O 失败最多尝试三次；
+8. 始终关闭输入流、输出流和连接。
 
-## TLS / HTTPS 问题
+JAD/Manifest 声明：
 
-这是 J2ME 项目最棘手的问题：
-
-### 问题
-- W995 出厂时只支持 **TLS 1.0**
-- 现代网站 / CDN 都已经停用 TLS 1.0
-- 如果你的 OpenClaw 服务器用 Let's Encrypt 证书，TLS 1.0 握手会直接失败
-
-### 解决方案
-
-有几种方案，推荐方案一：
-
-#### 方案一: HTTP + 反向代理 (推荐)
-J2ME 用 HTTP 连接到你的反向代理服务器，反向代理用 HTTPS 转发到 OpenClaw：
-
-```
-W995 --(HTTP)--> Nginx 反向代理 --(HTTPS)--> OpenClaw 服务器
-```
-
-- 反向代理可以放在你家里有公网 IP 的机器上，或者任何 VPS
-- 你自己的反向代理配置支持 HTTP，对 TLS 版本没有要求
-- 优势：简单，不需要修改手机或证书，不影响安全性（内网 HTTP 没问题）
-
-#### 方案二: 使用支持 TLS 1.0 的旧证书
-一些旧的 CA 证书链仍然支持 TLS 1.0 握手，但越来越少了，不推荐。
-
-#### 方案三: 给服务器手工配置启用 TLS 1.0
-你可以在 Nginx 配置中启用 TLS 1.0，但不推荐这么做，有安全风险。
-
-## 网络权限
-
-在 JAD 文件中需要声明允许联网：
-
-```
+```text
 MIDlet-Permissions: javax.microedition.io.Connector.http
-MIDlet-Permissions-opt: javax.microedition.io.Connector.network
 ```
 
-没有权限声明的话，手机会拒绝 MIDlet 联网。
+## 配置对应关系
 
-## WiFi vs 蜂窝网络
+代理环境：
 
-### WiFi (推荐)
-- W995 系统层面支持连接现代家用 WiFi 路由器（WPA2 正常工作）
-- 速度快，延迟低，不需要 SIM 卡
-- 在家里使用完全足够
+- `API_KEY`：上游密钥，只存在于代理；
+- `CLIENT_TOKEN`：J2ME 共享令牌；
+- `API_URL`：固定 HTTPS 上游；
+- `UPSTREAM_TIMEOUT_SECONDS`、`MAX_REQUEST_BYTES`、`MAX_RESPONSE_BYTES`、`RATE_LIMIT_PER_MINUTE`：资源边界。
 
-### 蜂窝网络 (GPRS/3G)
-- 如果需要外出使用，可以插一张流量卡
-- W995 支持 3G HSDPA，实际速度足够发文本请求
-- 需要确认你所在地区运营商还支持 3G
+客户端 `config.properties`：
 
-## 连接超时处理
+- `mjga.api.url`：代理的 `/v1/chat/completions` HTTP URL；
+- `mjga.client.token`：必须等于 `CLIENT_TOKEN`；
+- `mjga.model`：请求中的模型/端点 ID。
 
-J2ME 默认超时时间很长，最好自己设置超时：
+不要把 `API_KEY` 写入 JAD/JAR。`config.properties` 被忽略，但打包产物会包含客户端令牌，因此 JAD/JAR 也不应公开分发。
 
-```java
-conn.setRequestProperty("Connection", "close");
-// 你可以用线程监控超时
-```
+## 测试策略
 
-## 内存管理
-
-因为可用堆内存只有 ~1.5MB，注意：
-
-- 不要一次性读取整个大响应到内存，分段显示
-- 用完 InputStream/OutputStream/HttpConnection 立刻关闭
-- JSON 解析完及时释放对象
-
-## 调试网络问题
-
-在模拟器中开发时，可以开启网络日志，查看请求和响应：
-
-```java
-System.out.println("Response code: " + conn.getResponseCode());
-System.out.println("Length: " + conn.getLength());
-```
-
-真机调试可以把错误信息显示在屏幕上。
-
+代理合同测试全部使用 Python `MockTransport`、Go `httptest`/自定义 `RoundTripper`，不会调用真实 LLM。J2ME 在 Java SE 上运行 JSON、UTF-8/大小边界和历史上限测试。MicroEmulator 与 W995 真机仍需单独做联网验收。
