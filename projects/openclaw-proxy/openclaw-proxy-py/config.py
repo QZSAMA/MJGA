@@ -10,7 +10,9 @@ DEFAULT_API_URL = "https://ark.cn-beijing.volces.com/api/coding/v3/chat/completi
 
 def _positive_int(values: Mapping[str, str], name: str, default: int) -> int:
     """Read a strictly positive integer setting."""
-    raw = values.get(name, str(default))
+    raw = values.get(name, "").strip()
+    if not raw:
+        return default
     try:
         value = int(raw)
     except ValueError as exc:
@@ -42,10 +44,11 @@ class Settings:
             raise ValueError("API_KEY is required")
         if not client_token:
             raise ValueError("CLIENT_TOKEN is required")
+        api_url = values.get("API_URL", "").strip() or DEFAULT_API_URL
         return cls(
             api_key=api_key,
             client_token=client_token,
-            api_url=values.get("API_URL", DEFAULT_API_URL).strip(),
+            api_url=api_url,
             port=_positive_int(values, "PORT", 8080),
             upstream_timeout_seconds=_positive_int(
                 values, "UPSTREAM_TIMEOUT_SECONDS", 60

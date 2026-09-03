@@ -1,6 +1,6 @@
 import pytest
 
-from config import Settings
+from config import DEFAULT_API_URL, Settings
 
 
 BASE_ENV = {
@@ -38,6 +38,27 @@ def test_rejects_invalid_positive_integer(name, value):
 
 def test_loads_defaults():
     settings = Settings.from_mapping(BASE_ENV)
+    assert settings.port == 8080
+    assert settings.upstream_timeout_seconds == 60
+    assert settings.max_request_bytes == 8192
+    assert settings.max_response_bytes == 32768
+    assert settings.rate_limit_per_minute == 10
+
+
+def test_blank_optional_values_load_defaults():
+    env = dict(BASE_ENV)
+    env.update(
+        {
+            "API_URL": "  ",
+            "PORT": " ",
+            "UPSTREAM_TIMEOUT_SECONDS": "",
+            "MAX_REQUEST_BYTES": " ",
+            "MAX_RESPONSE_BYTES": "",
+            "RATE_LIMIT_PER_MINUTE": " ",
+        }
+    )
+    settings = Settings.from_mapping(env)
+    assert settings.api_url == DEFAULT_API_URL
     assert settings.port == 8080
     assert settings.upstream_timeout_seconds == 60
     assert settings.max_request_bytes == 8192
