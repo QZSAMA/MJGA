@@ -30,3 +30,6 @@ Thumbs.db
 .env
 config.properties
 local.properties
+
+# Isolated development worktrees
+.worktrees/
