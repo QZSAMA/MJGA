@@ -13,7 +13,14 @@ gradle/
 
 # Project build output
 **/build/
+**/build-manual/
+**/build-test/
 **/dist/
+
+# Local language tooling
+**/.venv/
+**/.pytest_cache/
+**/__pycache__/
 
 # Output JAR/JAD (don't commit binary outputs)
 **/dist/*.jar

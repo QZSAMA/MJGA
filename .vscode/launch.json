@@ -9,15 +9,9 @@
              "type": "debugpy",
              "request": "launch",
              "program": "${workspaceFolder}/projects/openclaw-proxy/openclaw-proxy-py/main.py",
-             "python": "${workspaceFolder}/projects/openclaw-proxy/openclaw-proxy-py/.venv/bin/python",
+             "python": "${workspaceFolder}/projects/openclaw-proxy/openclaw-proxy-py/.venv/Scripts/python.exe",
              "console": "integratedTerminal",
-             "env": {
-                 "API_KEY": "80f1b58b-9fc6-40f5-bc0b-968181fdae12",
-                 "FORCE_ENGLISH": "y",
-                 "API_URL": "https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions",
-                 "MODEL": "ark-code-latest",
-                 "PORT": "8080"
-             },
+             "envFile": "${workspaceFolder}/projects/openclaw-proxy/openclaw-proxy-py/.env",
              "justMyCode": true
          },
         {

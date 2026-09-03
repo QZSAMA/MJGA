@@ -1,16 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="MJGA" default="jar" basedir=".">
+<project name="MJGA" default="dist" basedir=".">
 
     <property name="src.dir" value="src"/>
     <property name="build.dir" value="build"/>
     <property name="dist.dir" value="dist"/>
     <property name="lib.dir" value="lib"/>
     <property name="res.dir" value="res"/>
+    <property name="test.src.dir" value="test"/>
+    <property name="test.build.dir" value="build-test"/>
+
+    <property name="json.test.class" value="com.mjga.util.JsonParserTest"/>
+    <property name="response.test.class" value="com.mjga.network.ResponseReaderTest"/>
+    <property name="history.test.class" value="com.mjga.ui.ChatHistoryTest"/>
 
     <property name="main.class" value="com.mjga.midlet.MJGAMidlet"/>
     <property name="midlet.name" value="MJGA"/>
     <property name="midlet.vendor" value="MJGA Project"/>
     <property name="midlet.version" value="1.0.0"/>
+
+    <property file="config.properties"/>
+    <property name="mjga.model" value="ark-code-latest"/>
 
     <path id="classpath">
         <fileset dir="${lib.dir}" includes="*.jar"/>
@@ -21,42 +30,92 @@
         <mkdir dir="${dist.dir}"/>
     </target>
 
+    <target name="validate-config">
+        <fail unless="mjga.api.url"
+              message="Missing mjga.api.url in apps/mjga-j2me/config.properties"/>
+        <fail unless="mjga.client.token"
+              message="Missing mjga.client.token in apps/mjga-j2me/config.properties"/>
+    </target>
+
     <target name="compile" depends="init" description="Compile Java source files">
-        <javac srcdir="${src.dir}" destdir="${build.dir}" 
-               target="1.8" source="1.8" includeantruntime="false" encoding="UTF-8">
+        <javac srcdir="${src.dir}" destdir="${build.dir}"
+               target="1.7" source="1.7" includeantruntime="false" encoding="UTF-8">
             <classpath refid="classpath"/>
         </javac>
     </target>
 
     <target name="resources" depends="compile" description="Copy resources">
         <copy todir="${build.dir}">
-            <fileset dir="${res.dir}"/>
+            <fileset dir="${res.dir}" erroronmissingdir="false"/>
         </copy>
     </target>
 
-    <target name="jar" depends="resources" description="Create JAR file">
-        <jar destfile="${dist.dir}/${ant.project.name}.jar" 
+    <target name="test" depends="init" description="Compile and run executable tests">
+        <mkdir dir="${test.build.dir}"/>
+        <javac destdir="${test.build.dir}"
+               target="1.7" source="1.7" includeantruntime="false" encoding="UTF-8">
+            <src path="${src.dir}"/>
+            <src path="${test.src.dir}"/>
+            <classpath refid="classpath"/>
+        </javac>
+        <java classname="${json.test.class}" fork="true" failonerror="true">
+            <classpath>
+                <pathelement location="${test.build.dir}"/>
+                <path refid="classpath"/>
+            </classpath>
+        </java>
+        <java classname="${response.test.class}" fork="true" failonerror="true">
+            <classpath>
+                <pathelement location="${test.build.dir}"/>
+                <path refid="classpath"/>
+            </classpath>
+        </java>
+        <java classname="${history.test.class}" fork="true" failonerror="true">
+            <classpath>
+                <pathelement location="${test.build.dir}"/>
+                <path refid="classpath"/>
+            </classpath>
+        </java>
+    </target>
+
+    <target name="jar" depends="validate-config,resources" description="Create JAR file">
+        <jar destfile="${dist.dir}/${ant.project.name}.jar"
              manifest="${src.dir}/MANIFEST.MF">
-            <fileset dir="${build.dir}" includes="**/*.class"/>
-            <fileset dir="${build.dir}" includes="**/*.*"/>
+            <manifest>
+                <attribute name="MIDlet-Permissions"
+                           value="javax.microedition.io.Connector.http"/>
+                <attribute name="MJGA-Api-Url" value="${mjga.api.url}"/>
+                <attribute name="MJGA-Client-Token" value="${mjga.client.token}"/>
+                <attribute name="MJGA-Model" value="${mjga.model}"/>
+            </manifest>
+            <fileset dir="${build.dir}"/>
         </jar>
     </target>
 
     <target name="jad" depends="jar" description="Create JAD file">
-        <touch file="${dist.dir}/${ant.project.name}.jad"/>
+        <length file="${dist.dir}/${ant.project.name}.jar"
+                property="midlet.jar.size"/>
         <echo file="${dist.dir}/${ant.project.name}.jad" encoding="UTF-8">MIDlet-Name: ${midlet.name}
 MIDlet-Version: ${midlet.version}
 MIDlet-Vendor: ${midlet.vendor}
 MIDlet-1: ${midlet.name}, , ${main.class}
 MIDlet-Jar-URL: ${ant.project.name}.jar
+MIDlet-Jar-Size: ${midlet.jar.size}
+MicroEdition-Configuration: CLDC-1.1
+MicroEdition-Profile: MIDP-2.0
+MIDlet-Permissions: javax.microedition.io.Connector.http
+MJGA-Api-Url: ${mjga.api.url}
+MJGA-Client-Token: ${mjga.client.token}
+MJGA-Model: ${mjga.model}
 </echo>
     </target>
 
     <target name="clean" description="Clean build output">
         <delete dir="${build.dir}"/>
+        <delete dir="${test.build.dir}"/>
         <delete dir="${dist.dir}"/>
     </target>
 
-    <target name="dist" depends="clean,jar,jad" description="Build full distribution"/>
+    <target name="dist" depends="clean,test,jad" description="Build full distribution"/>
 
 </project>
