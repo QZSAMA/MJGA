@@ -103,7 +103,12 @@ public class MJGAMidlet extends MIDlet implements CommandListener {
     public void commandAction(Command c, Displayable d) {
         if (c == startChatCommand) {
             if (chatScreen == null) {
-                chatScreen = new ChatScreen(this, API_URL, MODEL);
+                chatScreen = new ChatScreen(
+                    this,
+                    API_URL,
+                    getAppProperty("MJGA-Client-Token"),
+                    MODEL
+                );
             }
             display.setCurrent(chatScreen);
         } else if (c == exitCommand) {
