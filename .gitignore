@@ -28,7 +28,7 @@ Thumbs.db
 
 # Local config
 .env
-config.properties
+apps/mjga-j2me/config.properties
 local.properties
 
 # Isolated development worktrees

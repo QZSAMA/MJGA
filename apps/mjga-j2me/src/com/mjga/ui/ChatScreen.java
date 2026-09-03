@@ -1,6 +1,5 @@
 package com.mjga.ui;
 
-import java.util.Vector;
 import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Displayable;
@@ -12,18 +11,6 @@ import com.mjga.midlet.MJGAMidlet;
 import com.mjga.network.HttpClient;
 import com.mjga.network.HttpResponse;
 import com.mjga.util.JsonParser;
-
-class QAPair {
-    String question;
-    String answer;
-    boolean collapsed;
-
-    QAPair(String question, String answer) {
-        this.question = question;
-        this.answer = answer;
-        this.collapsed = true;
-    }
-}
 
 public class ChatScreen extends Form implements CommandListener, Runnable {
     private static final int COLLAPSED_LENGTH = 60;
@@ -38,7 +25,7 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
     private final String model;
     private final TextField inputField;
     private final StringItem statusItem;
-    private final Vector qaList;
+    private final ChatHistory history;
     private final Font smallFont;
     private boolean processing;
     private String pendingQuestion;
@@ -54,7 +41,7 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
         this.model = model;
         this.httpClient = new HttpClient(clientToken, MAX_RESPONSE_BYTES);
         this.processing = false;
-        this.qaList = new Vector();
+        this.history = new ChatHistory(10);
 
         Font selectedFont;
         try {
@@ -110,8 +97,8 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
 
     public void run() {
         final String question = this.pendingQuestion;
-        final QAPair newQA = new QAPair(question, "...（正在生成回答）");
-        this.qaList.addElement(newQA);
+        this.history.add(question, "...（正在生成回答）");
+        final QAPair newQA = this.history.get(this.history.size() - 1);
         this.midlet.getDisplay().callSerially(new Runnable() {
             public void run() {
                 rebuildChatView();
@@ -186,15 +173,15 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
 
     private void toggleAll() {
         boolean hasCollapsed = false;
-        for (int index = 0; index < this.qaList.size(); index++) {
-            QAPair qa = (QAPair) this.qaList.elementAt(index);
+        for (int index = 0; index < this.history.size(); index++) {
+            QAPair qa = this.history.get(index);
             if (qa.collapsed) {
                 hasCollapsed = true;
                 break;
             }
         }
-        for (int index = 0; index < this.qaList.size(); index++) {
-            QAPair qa = (QAPair) this.qaList.elementAt(index);
+        for (int index = 0; index < this.history.size(); index++) {
+            QAPair qa = this.history.get(index);
             qa.collapsed = !hasCollapsed;
         }
         rebuildChatView();
@@ -204,8 +191,8 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
         while (size() > 2) {
             delete(size() - 1);
         }
-        for (int index = 0; index < this.qaList.size(); index++) {
-            QAPair qa = (QAPair) this.qaList.elementAt(index);
+        for (int index = 0; index < this.history.size(); index++) {
+            QAPair qa = this.history.get(index);
             StringItem question = new StringItem(
                 null,
                 "你: " + qa.question + "\n"

@@ -1,146 +1,143 @@
 package com.mjga.midlet;
 
-import javax.microedition.midlet.MIDlet;
-import javax.microedition.midlet.MIDletStateChangeException;
-import javax.microedition.lcdui.Display;
-import javax.microedition.lcdui.Form;
-import javax.microedition.lcdui.Command;
-import javax.microedition.lcdui.CommandListener;
-import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Alert;
 import javax.microedition.lcdui.AlertType;
+import javax.microedition.lcdui.Command;
+import javax.microedition.lcdui.CommandListener;
+import javax.microedition.lcdui.Display;
+import javax.microedition.lcdui.Displayable;
+import javax.microedition.lcdui.Form;
 import javax.microedition.lcdui.StringItem;
+import javax.microedition.midlet.MIDlet;
+import javax.microedition.midlet.MIDletStateChangeException;
 import com.mjga.ui.ChatScreen;
 
-/**
- * MJGA 主入口 MIDlet
- * 
- * 这是整个应用程序的入口点，继承自 javax.microedition.midlet.MIDlet
- * 遵循 MIDP 2.0 规范管理应用程序生命周期
- */
-public class MJGAMidlet extends MIDlet implements CommandListener {
-    
-    /** 显示管理器 */
+/** MJGA MIDlet lifecycle and build-injected application configuration. */
+public final class MJGAMidlet extends MIDlet implements CommandListener {
+    private static final String DEFAULT_MODEL = "ark-code-latest";
+
     private Display display;
-    
-    /** 主窗体 */
     private Form mainForm;
-    
-    /** 开始聊天命令 */
     private Command startChatCommand;
-    
-    /** 退出命令 */
     private Command exitCommand;
-    
-    /** 聊天界面 */
     private ChatScreen chatScreen;
-    
-    /**
-     * 配置 - openclaw-proxy 地址
-     * 如果你在本机测试，使用: http://localhost:8080/v1/chat/completions
-     * 如果部署在 VPS，替换成你的 VPS IP
-     */
-    private static final String API_URL = "http://localhost:8080/v1/chat/completions";
-    
-    /**
-     * 模型名称
-     */
-    private static final String MODEL = "ark-code-latest";
-    
-    /**
-     * 构造函数
-     * 初始化 MIDlet，创建基本 UI
-     */
+    private String apiUrl;
+    private String clientToken;
+    private String model;
+    private String configurationError;
+
     public MJGAMidlet() {
-        display = Display.getDisplay(this);
-        
-        // 创建主菜单
-        mainForm = new Form("MJGA");
-        mainForm.append(new StringItem(null, "Make Java-phone Great Again\n\n"));
-        mainForm.append(new StringItem(null, "Target: Sony Ericsson W995\n"));
-        mainForm.append(new StringItem(null, "CLDC 1.1 + MIDP 2.0\n"));
-        
-        // 添加命令
-        startChatCommand = new Command("开始聊天", Command.OK, 1);
-        exitCommand = new Command("退出", Command.EXIT, 2);
-        mainForm.addCommand(startChatCommand);
-        mainForm.addCommand(exitCommand);
-        mainForm.setCommandListener(this);
+        this.display = Display.getDisplay(this);
+        loadConfiguration();
+
+        this.mainForm = new Form("MJGA");
+        this.mainForm.append(new StringItem(
+            null,
+            "Make Java-phone Great Again\n\n"
+        ));
+        this.mainForm.append(new StringItem(
+            null,
+            "Target: Sony Ericsson W995\n"
+        ));
+        this.mainForm.append(new StringItem(
+            null,
+            "CLDC 1.1 + MIDP 2.0\n"
+        ));
+
+        this.startChatCommand = new Command("开始聊天", Command.OK, 1);
+        this.exitCommand = new Command("退出", Command.EXIT, 2);
+        this.mainForm.addCommand(this.startChatCommand);
+        this.mainForm.addCommand(this.exitCommand);
+        this.mainForm.setCommandListener(this);
     }
-    
-    /**
-     * 启动 MIDlet
-     * 当应用从暂停状态进入运行状态时被调用
-     */
+
+    private void loadConfiguration() {
+        this.apiUrl = readProperty("MJGA-Api-Url");
+        this.clientToken = readProperty("MJGA-Client-Token");
+        this.model = readProperty("MJGA-Model");
+        if (this.model == null) {
+            this.model = DEFAULT_MODEL;
+        }
+        if (this.apiUrl == null || this.clientToken == null) {
+            this.configurationError =
+                "缺少 MJGA-Api-Url 或 MJGA-Client-Token。请配置后重新构建应用。";
+        }
+    }
+
+    private String readProperty(String name) {
+        String value = getAppProperty(name);
+        if (value == null || value.trim().length() == 0) {
+            return null;
+        }
+        return value.trim();
+    }
+
     protected void startApp() throws MIDletStateChangeException {
-        display.setCurrent(mainForm);
+        if (this.configurationError != null) {
+            showConfigurationError();
+            return;
+        }
+        this.display.setCurrent(this.mainForm);
     }
-    
-    /**
-     * 暂停 MIDlet
-     * 当应用被系统暂停（比如来电）时调用
-     */
+
     protected void pauseApp() {
-        // 不需要特殊处理
+        // No background service is retained while paused.
     }
-    
-    /**
-     * 销毁 MIDlet
-     * 当应用退出时调用，释放资源
-     * 
-     * @param unconditional 是否无条件退出
-     */
-    protected void destroyApp(boolean unconditional) throws MIDletStateChangeException {
-        // 释放资源
-        display = null;
-        mainForm = null;
-        chatScreen = null;
+
+    protected void destroyApp(boolean unconditional)
+            throws MIDletStateChangeException {
+        this.display = null;
+        this.mainForm = null;
+        this.chatScreen = null;
     }
-    
-    /**
-     * 命令处理
-     */
-    public void commandAction(Command c, Displayable d) {
-        if (c == startChatCommand) {
-            if (chatScreen == null) {
-                chatScreen = new ChatScreen(
+
+    public void commandAction(Command command, Displayable displayable) {
+        if (command == this.startChatCommand) {
+            if (this.configurationError != null) {
+                showConfigurationError();
+                return;
+            }
+            if (this.chatScreen == null) {
+                this.chatScreen = new ChatScreen(
                     this,
-                    API_URL,
-                    getAppProperty("MJGA-Client-Token"),
-                    MODEL
+                    this.apiUrl,
+                    this.clientToken,
+                    this.model
                 );
             }
-            display.setCurrent(chatScreen);
-        } else if (c == exitCommand) {
+            this.display.setCurrent(this.chatScreen);
+        } else if (command == this.exitCommand) {
             try {
                 destroyApp(true);
                 notifyDestroyed();
-            } catch (MIDletStateChangeException e) {
-                // ignore
+            } catch (MIDletStateChangeException ignored) {
+                // Destruction is already best-effort on MIDP.
             }
         }
     }
-    
-    /**
-     * 显示主屏幕
-     */
-    public void showMainScreen() {
-        display.setCurrent(mainForm);
+
+    private void showConfigurationError() {
+        Alert alert = new Alert(
+            "配置错误",
+            this.configurationError,
+            null,
+            AlertType.ERROR
+        );
+        alert.setTimeout(Alert.FOREVER);
+        this.display.setCurrent(alert);
     }
-    
-    /**
-     * 显示错误提示
-     */
+
+    public void showMainScreen() {
+        this.display.setCurrent(this.mainForm);
+    }
+
     public void displayError(String message) {
         Alert alert = new Alert("错误", message, null, AlertType.ERROR);
         alert.setTimeout(3000);
-        display.setCurrent(alert);
+        this.display.setCurrent(alert);
     }
-    
-    /**
-     * 获取显示管理器
-     */
+
     public Display getDisplay() {
-        return display;
+        return this.display;
     }
 }
