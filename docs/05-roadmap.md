@@ -29,9 +29,13 @@
 - [x] JAD 非零 JAR 大小、HTTP 权限、URL、令牌和模型；
 - [x] 跟踪文件凭据模式、本地配置/生成二进制和 whitespace 检查。
 
+### CI 验证已通过
+
+- [x] GitHub Actions `Safe text baseline` run [33740528827](https://github.com/QZSAMA/MJGA/actions/runs/33740528827)；
+- [x] `python`、`go`（含 Docker build）、`j2me` 和 `no-secrets` 四个作业均成功。
+
 ### 尚待环境/设备验证
 
-- [ ] Docker 镜像构建：本机无 Docker，必须由 CI 补证；
 - [ ] MicroEmulator GUI 启动与代理联网；
 - [ ] W995 从 JAD/JAR 安装；
 - [ ] W995 Wi-Fi 文本问答；
@@ -43,7 +47,7 @@
 - [ ] 在上游平台撤销并轮换曾提交到 Git 历史的真实 API 密钥；
 - [ ] 确认部署只通过 LAN、VPN 或受控隧道访问；
 - [ ] 为实际部署生成新的长随机 `CLIENT_TOKEN`；
-- [ ] 检查 CI 的 Go Docker、J2ME 与 no-secrets 作业全部通过。
+- [x] 检查 CI 的 Go Docker、J2ME 与 no-secrets 作业全部通过（run 33740528827）。
 
 删除当前文件中的密钥不会从 Git 历史中删除旧值；本项目不会自动重写历史。
 
