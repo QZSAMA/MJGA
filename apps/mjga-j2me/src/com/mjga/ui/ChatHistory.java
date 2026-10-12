@@ -3,14 +3,13 @@ package com.mjga.ui;
 import java.util.Vector;
 
 class QAPair {
-    String question;
+    final String question;
     String answer;
-    boolean collapsed;
+    boolean failed;
 
     QAPair(String question, String answer) {
         this.question = question;
         this.answer = answer;
-        this.collapsed = true;
     }
 }
 

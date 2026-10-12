@@ -7,6 +7,24 @@ package com.mjga.util;
  * parsers so it remains usable on strict CLDC/MIDP devices.
  */
 public final class JsonParser {
+    /**
+     * Keeps answers short and plain-text only for the tiny feature-phone
+     * screen, which renders Markdown syntax literally.
+     */
+    static final String SYSTEM_PROMPT =
+        "你是运行在小屏功能手机上的助手，屏幕只能显示纯文本，每行约15个汉字。"
+        + "规则：1.只输出纯文本，禁止使用Markdown符号，如井号、星号、反引号、表格；"
+        + "2.直接给出答案，不要寒暄，不要复述问题；"
+        + "3.默认回答不超过两句话、50个汉字；需要分点时最多列3点、每点不超过15字；"
+        + "只有用户明确要求详细或展开时才可以加长；"
+        + "4.用户没要求代码就不要给代码；"
+        + "5.需要分点时用1. 2. 3.这样的纯文本编号。";
+
+    /** Maximum number of previous Q&A turns included in one request. */
+    static final int MAX_HISTORY_TURNS = 5;
+    /** Per-message character cap for history to bound the request body. */
+    static final int MAX_HISTORY_MESSAGE_CHARS = 150;
+
     private JsonParser() {
     }
 
@@ -31,13 +49,67 @@ public final class JsonParser {
      * Build the small chat-completions request used by the device client.
      */
     public static String buildChatRequest(String model, String userMessage) {
+        return buildChatRequest(model, null, null, userMessage);
+    }
+
+    /**
+     * Build a chat-completions request that carries recent conversation
+     * context. Only the most recent turns are included and each history
+     * message is truncated so the body stays within the proxy limit.
+     *
+     * @param priorQuestions previous user questions, oldest first
+     * @param priorAnswers   previous assistant answers, oldest first
+     * @param userMessage    the new user question
+     */
+    public static String buildChatRequest(
+            String model,
+            String[] priorQuestions,
+            String[] priorAnswers,
+            String userMessage) {
         StringBuffer request = new StringBuffer();
         request.append("{\"model\":\"");
         request.append(escapeJson(model));
-        request.append("\",\"messages\":[{\"role\":\"user\",\"content\":\"");
-        request.append(escapeJson(userMessage));
-        request.append("\"}]}");
+        request.append("\",\"messages\":[{\"role\":\"system\",\"content\":\"");
+        request.append(escapeJson(SYSTEM_PROMPT));
+        request.append("\"}");
+
+        if (priorQuestions != null && priorAnswers != null) {
+            int turnCount = Math.min(priorQuestions.length, priorAnswers.length);
+            int start = turnCount > MAX_HISTORY_TURNS
+                ? turnCount - MAX_HISTORY_TURNS
+                : 0;
+            for (int index = start; index < turnCount; index++) {
+                appendMessage(request, "user", priorQuestions[index], true);
+                appendMessage(request, "assistant", priorAnswers[index], true);
+            }
+        }
+
+        appendMessage(request, "user", userMessage, false);
+        request.append("]}");
         return request.toString();
+    }
+
+    private static void appendMessage(
+            StringBuffer request, String role, String content, boolean clip) {
+        request.append(",{\"role\":\"");
+        request.append(role);
+        request.append("\",\"content\":\"");
+        request.append(escapeJson(clip ? clipHistory(content) : safe(content)));
+        request.append("\"}");
+    }
+
+    private static String safe(String content) {
+        return content == null ? "" : content;
+    }
+
+    private static String clipHistory(String content) {
+        if (content == null) {
+            return "";
+        }
+        if (content.length() <= MAX_HISTORY_MESSAGE_CHARS) {
+            return content;
+        }
+        return content.substring(0, MAX_HISTORY_MESSAGE_CHARS) + "…";
     }
 
     private static int findContentValue(String json) {
