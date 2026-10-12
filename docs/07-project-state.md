@@ -3,7 +3,7 @@
 > 本文是项目的单一入口文档，集中说明项目是什么、当前进展、系统架构、目录结构、分支策略与开发规则。
 > 各专题细节仍以对应子文档为准，本文只做索引和汇总。
 >
-> 最近一次合并更新：2026-10-12。
+> 最近一次进展更新：2026-10-12（模拟器端到端联调通过、聊天界面重写、多轮上下文、思考占位）。
 
 ## 1. 项目定位
 
@@ -55,7 +55,7 @@ MJGA/
 │   └── src/com/mjga/
 │       ├── midlet/MJGAMidlet.java   # MIDlet 生命周期、配置注入读取
 │       ├── network/                 # HttpClient、HttpResponse、有界 ResponseReader
-│       ├── ui/                      # ChatScreen、ChatHistory（LCDUI、折叠/历史上限）
+│       ├── ui/                      # 自绘 Canvas 聊天界面、ChatHistory（最近 10 组内存上限）
 │       └── util/JsonParser.java     # JSON 构建转义与响应字段扫描
 ├── projects/openclaw-proxy/
 │   ├── openclaw-proxy-go/           # Go 1.21 + Gin 实现（含 Dockerfile）
@@ -80,24 +80,29 @@ MJGA/
 
 **安全文本基线源码已全部实现：**
 
-- J2ME 端：原生 LCDUI 文本界面、显式 UTF-8 请求与有界 UTF-8 响应、JSON 转义/扫描解析、`X-MJGA-Token` 鉴权头、长回答折叠展开、最近 10 组问答内存上限、全部 LCDUI 修改走 UI 线程（`callSerially`）；
+- J2ME 端：自绘 Canvas 聊天界面（用户/AI 气泡、`Font.stringWidth` 手动折行、消息区滚动、输入栏固定底部、TextBox 弹层输入）、显式 UTF-8 请求与有界 UTF-8 响应、JSON 转义/扫描解析、`X-MJGA-Token` 鉴权头、最近 10 组问答内存上限与渲染 2000 字截断、全部 LCDUI 修改走 UI 线程（`callSerially`）；
+- 多轮上下文（2026-10-12）：请求体按 `system → 最近 5 轮 user/assistant → 当前 user` 组装，历史消息每条 150 字截断，失败轮次不带入；
+- 思考占位（2026-10-12）：提交后立即插入答案为 `null` 的气泡，Timer 每 500ms 驱动“正在思考/./../...”动画，回复或失败到达后经 `callSerially` 原地替换；
+- 小屏提示词：system 消息约束模型只返回简短纯文本、禁用 Markdown；
 - 代理端：Go 与 Python 两个功能等价实现，提供 `GET /ping` 与 `POST /v1/chat/completions`，含设备令牌恒定时间校验、固定窗口限流、请求 8KB/响应 32KB 上限、60s 上游超时、统一错误信封与脱敏日志；
 - 工程化：`config.properties` → Manifest/JAD 配置注入（`getAppProperty()` 读取），Ant 单一构建入口，Linux/Windows MicroEmulator 启动脚本，GitHub Actions 四个作业（python、go 含 Docker build、j2me、no-secrets）。
 
 **验证状态：**
 
-- 本地：Python 20 项 pytest、`compileall`、Go `go test`/`go vet`、J2ME 三组测试（JSON、UTF-8/响应上限、历史上限）、`ant clean test dist`、JAD 元数据与凭据扫描全部通过；
-- CI：GitHub Actions run [33740528827](https://github.com/QZSAMA/MJGA/actions/runs/33740528827) 四个作业全部成功。
+- 本地：Python 20 项 pytest、`compileall`、Go `go test`/`go vet`、J2ME 三组测试（JSON 含多轮窗口与历史截断断言、UTF-8/响应上限、历史上限）、`ant clean test dist`、JAD 元数据与凭据扫描全部通过；
+- 端到端（2026-10-12）：MicroEmulator 经本机 Python 代理真实联通火山方舟（模型 `ark-code-latest`），完成实际问答、思考占位/原地替换目视确认、多轮指代验证；
+- CI：GitHub Actions run [33740528827](https://github.com/QZSAMA/MJGA/actions/runs/33740528827) 四个作业全部成功（本次 UI/上下文改动尚未触发新的 CI 运行）。
 
 ### 尚待验证 / 未完成（下一步重点）
 
 证据化状态见 [05-roadmap.md](./05-roadmap.md)。关键缺口：
 
-- [ ] MicroEmulator GUI 启动与代理联网的端到端验收；
 - [ ] W995 真机从 JAD/JAR 安装；
 - [ ] W995 Wi-Fi 与蜂窝网络文本问答；
+- [ ] 真机前置：把代理部署到公网服务器（JAD 内当前是本机局域网地址，W995 又无法直连现代 HTTPS），用公网地址重新 `ant dist`；
+- [ ] J2ME HTTP 连接/读取超时（当前 `Connector.open` 无超时，弱网可能无限等待）；
 - [ ] 真机堆内存、长回复、连续请求稳定性；
-- [ ] 真机 T9/物理键盘输入体验、240×320 布局适配；
+- [ ] 真机 T9/物理键盘输入体验；
 - [ ] 多设备独立令牌与限流、可观测指标。
 
 明确不属于当前基线：持久会话/会话 ID、流式响应、语音输入/TTS/音频、图片生成识别、存储卡配置编辑——这些需在文本链路通过真机验收后单独立项。
@@ -105,7 +110,8 @@ MJGA/
 ### 安全运维待办
 
 - 仓库旧 Git 历史中曾提交过**真实上游 API 密钥**，删除当前文件不会从历史移除，必须在上游平台**撤销并轮换**该密钥；
-- 实际部署需生成新的长随机 `CLIENT_TOKEN`，并确认只通过 LAN/VPN/受控隧道访问。
+- 2026-10-12 本地联调期间使用的火山方舟 API KEY 曾在开发会话中明文出现，建议一并轮换；
+- 实际部署需生成新的长随机 `CLIENT_TOKEN`，并确认只通过 LAN/VPN/受控隧道（公网部署时评估明文 HTTP 风险）访问。
 
 ## 5. 分支与合并策略
 
