@@ -114,6 +114,7 @@ Docker 镜像构建由 CI 执行，本机未安装 Docker。MicroEmulator GUI �
 
 ## 文档
 
+- [项目状态与架构总览（进展入口）](./docs/07-project-state.md)
 - [J2ME 客户端](./apps/mjga-j2me/README.md)
 - [代理部署](./projects/openclaw-proxy/README.md)
 - [网络协议与安全边界](./docs/03-networking.md)
