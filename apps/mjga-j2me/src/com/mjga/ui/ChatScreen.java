@@ -58,7 +58,8 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
         this.sendCommand = new Command("发送", Command.OK, 1);
         this.backCommand = new Command("返回", Command.BACK, 2);
         this.toggleCommand = new Command("切换展开", Command.ITEM, 3);
-        this.statusItem = new StringItem(null, "就绪，请输入问题");
+        this.statusItem = new StringItem(
+            null, "就绪，请输入问题（右键切换展开）");
         this.statusItem.setFont(this.smallFont);
         append(this.statusItem);
         this.inputField = new TextField("输入问题:", "", 500, TextField.ANY);
@@ -133,7 +134,7 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
             public void run() {
                 newQA.answer = content;
                 rebuildChatView();
-                statusItem.setText("就绪，请输入问题");
+                statusItem.setText("就绪，请输入问题（右键切换展开）");
                 inputField.setString("");
                 pendingQuestion = null;
                 processing = false;
@@ -203,7 +204,7 @@ public class ChatScreen extends Form implements CommandListener, Runnable {
             String answerText;
             if (qa.collapsed && qa.answer.length() > COLLAPSED_LENGTH) {
                 answerText = qa.answer.substring(0, COLLAPSED_LENGTH)
-                    + "...\n[菜单→切换展开查看全部]";
+                    + "...\n[菜单→切换展开]";
             } else {
                 answerText = qa.answer;
             }
